@@ -120,40 +120,55 @@ def window_cmdline(pid):
         return None
 
 
-def place(entry, placed, timeout=8, pid=None):
-    """Match entry's wm_class (exe basename) to an unplaced window and position it.
+def place_once(entry, placed, ignore=frozenset(), pid=None):
+    """One non-blocking attempt to match entry's wm_class and position the window.
 
-    When ``pid`` (the launched process) is known, prefer the window owned by it
-    so duplicate-class windows land on their own saved geometry.
+    Skips windows already ``placed`` this run and any in ``ignore`` (windows open
+    before boot — never move those, so a single-instance app doesn't yank a
+    window the user already had open). When ``pid`` (the launched process) is
+    known, prefer the window owned by it so duplicate-class windows land on their
+    own saved geometry. Returns the matched hwnd, or None if none is open yet.
     """
     import win32gui
     import win32con
     _ensure_dpi()
     match = (entry.get("wm_class") or "").lower()
+    if not match:
+        return None
+    cands = [w for w in win_list()
+             if w["id"] not in placed and w["id"] not in ignore
+             and match == (w.get("wm_class") or "").lower()]
+    if not cands:
+        return None
+    if pid:
+        cands.sort(key=lambda w: 0 if w.get("pid") == pid else 1)
+    hwnd = cands[0]["id"]
+    placed.add(hwnd)
+    try:
+        if entry.get("maximized"):
+            win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+        else:
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            win32gui.SetWindowPos(
+                hwnd, 0, int(entry["x"]), int(entry["y"]),
+                int(entry["width"]), int(entry["height"]),
+                win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
+    except Exception as e:
+        print(f"clap-to-open: place failed for {match}: {e}", flush=True)
+    return hwnd
+
+
+def place(entry, placed, timeout=8, pid=None, ignore=frozenset()):
+    """Block up to ``timeout`` for entry's window, then position it (place_once)."""
+    _ensure_dpi()
     deadline = time.time() + timeout
     while time.time() < deadline:
-        cands = [w for w in win_list()
-                 if w["id"] not in placed
-                 and match and match == (w.get("wm_class") or "").lower()]
-        if pid:
-            cands.sort(key=lambda w: 0 if w.get("pid") == pid else 1)
-        for w in cands:
-            hwnd = w["id"]
-            placed.add(hwnd)
-            try:
-                if entry.get("maximized"):
-                    win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
-                else:
-                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-                    win32gui.SetWindowPos(
-                        hwnd, 0, int(entry["x"]), int(entry["y"]),
-                        int(entry["width"]), int(entry["height"]),
-                        win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
-            except Exception as e:
-                print(f"clap-to-open: place failed for {match}: {e}", flush=True)
-            return hwnd
+        wid = place_once(entry, placed, ignore, pid)
+        if wid is not None:
+            return wid
         time.sleep(0.4)
-    print(f"clap-to-open: window '{match}' did not appear in {timeout}s", flush=True)
+    print(f"clap-to-open: window '{(entry.get('wm_class') or '').lower()}' "
+          f"did not appear in {timeout}s", flush=True)
     return None
 
 

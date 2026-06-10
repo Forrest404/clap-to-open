@@ -21,7 +21,11 @@ def window_cmdline(pid):
     return None
 
 
-def place(entry, placed, timeout=12, pid=None):
+def place(entry, placed, timeout=12, pid=None, ignore=frozenset()):
+    return None
+
+
+def place_once(entry, placed, ignore=frozenset(), pid=None):
     return None
 
 

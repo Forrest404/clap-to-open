@@ -11,6 +11,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
   for the terminal (ptyxis/gnome-terminal `--`, konsole/xterm `-e`, kitty, …).
 
 ### Fixed
+- **Some windows ended up at the default position instead of their saved spot.**
+  Two causes, both fixed:
+  - Boot used to match *any* window of the saved class, including ones already
+    open before boot. A single-instance app (Ptyxis, a browser) would then have
+    an **existing** window yanked to the saved spot while its freshly-launched
+    window was left at the default. Boot now snapshots the windows open before it
+    runs and never moves those, placing only the new windows (with a last-resort
+    fallback to an existing window if the app only re-focused one).
+  - A **slow-to-open** app — e.g. a launcher that first starts a docker stack and
+    waits for a server before showing its window — blew the per-window 12 s wait
+    and never got placed. Placement is now a single non-blocking poll (up to
+    60 s): slow apps no longer hold up the others and get placed when they appear.
 - **Some windows silently didn't reopen on boot.** Two causes, both fixed:
   - *Flatpak apps* (Brave, Spotify, Blender, Bambu Studio, …) were captured with
     a sandbox-internal path (`/app/...`) that doesn't exist on the host, so the

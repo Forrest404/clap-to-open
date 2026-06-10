@@ -38,8 +38,12 @@ def window_cmdline(pid):
     return _windows.cmdline(pid)
 
 
-def place(entry, placed, timeout=12, pid=None):
-    return _windows.place(entry, placed, timeout, pid)
+def place(entry, placed, timeout=12, pid=None, ignore=frozenset()):
+    return _windows.place(entry, placed, timeout, pid, ignore)
+
+
+def place_once(entry, placed, ignore=frozenset(), pid=None):
+    return _windows.place_once(entry, placed, ignore, pid)
 
 
 def reassert_geometry(entry, win_id):

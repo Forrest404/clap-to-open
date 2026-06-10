@@ -220,31 +220,49 @@ def settle_geometry(items, total_timeout=8.0, interval=0.4):
         time.sleep(interval)
 
 
-def place(entry, placed, timeout=12, pid=None):
-    """Wait for an unplaced window matching ``entry``'s wm_class, then position it.
+def place_once(entry, placed, ignore=frozenset(), pid=None):
+    """One non-blocking attempt to match ``entry``'s window and position it.
 
-    ``placed`` is a shared set of window ids already assigned this run, so two
-    windows of the same class get their two distinct saved geometries instead of
-    both landing on the first match. ``pid`` (the launched process, when known)
-    lets us tie a window back to the process that opened it. Only windows that
-    actually launched are placed, so this never burns the timeout on a failure.
+    Considers only windows of the saved wm_class that aren't already ``placed``
+    this run and aren't in ``ignore``. ``ignore`` holds the window ids that were
+    open *before* boot relaunched anything — never move those, or a
+    single-instance app (Ptyxis, a browser) would have an existing window yanked
+    to a saved spot while its freshly-launched window is left at the default.
 
-    Returns the matched window id (for a later re-assert pass), or None if no
-    matching window appeared within ``timeout``.
+    ``placed`` is the shared set of ids already assigned this run, so two windows
+    of the same class get their two distinct saved geometries instead of both
+    landing on the first match. ``pid`` (the launched process, when known) ties a
+    window back to the process that opened it.
+
+    Returns the matched window id, or None if no suitable window is open yet.
     """
     match = (entry.get("wm_class") or "").lower()
+    if not match:
+        return None
+    wins = [w for w in win_list()
+            if w["id"] not in placed and w["id"] not in ignore
+            and (w.get("wm_class") or "").lower() == match]
+    win = _pick(wins, pid, entry.get("title"))
+    if win is None:
+        return None
+    wid = win["id"]
+    placed.add(wid)
+    assert_geometry(wid, entry)
+    return wid
+
+
+def place(entry, placed, timeout=12, pid=None, ignore=frozenset()):
+    """Block up to ``timeout`` for ``entry``'s window, then position it.
+
+    Thin polling wrapper over :func:`place_once`; returns the matched window id
+    (for a later re-assert pass), or None if nothing matched within ``timeout``.
+    """
     deadline = time.time() + timeout
     while time.time() < deadline:
-        wins = [w for w in win_list()
-                if w["id"] not in placed
-                and match and (w.get("wm_class") or "").lower() == match]
-        win = _pick(wins, pid, entry.get("title"))
-        if win is not None:
-            wid = win["id"]
-            placed.add(wid)
-            assert_geometry(wid, entry)
+        wid = place_once(entry, placed, ignore, pid)
+        if wid is not None:
             return wid
         time.sleep(0.3)
-    print(f"clap-to-open: window '{match}' did not appear in {timeout}s",
-          flush=True)
+    print(f"clap-to-open: window '{(entry.get('wm_class') or '').lower()}' "
+          f"did not appear in {timeout}s", flush=True)
     return None
