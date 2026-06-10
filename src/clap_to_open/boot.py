@@ -12,6 +12,7 @@ Notes / limitations:
   * Flatpak/wrapped apps may record a cmdline that doesn't replay verbatim.
 """
 import json
+import time
 
 from . import config, launchspec, paths, platforms, sound
 
