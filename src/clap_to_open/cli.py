@@ -4,11 +4,12 @@
     clap boot                           replay the saved layout now
     clap save                           capture the current window layout
     clap ctl on|off|toggle|status       control the listener service
+    clap doctor                         diagnose the local setup
 """
 import argparse
 import sys
 
-from . import boot, config, platforms, save
+from . import boot, config, doctor, platforms, save
 
 
 def _notify(title, body, icon=None):
@@ -67,6 +68,8 @@ def main(argv=None):
         func=lambda a: boot.main())
     sub.add_parser("save", help="capture the current window layout").set_defaults(
         func=lambda a: save.main())
+    sub.add_parser("doctor", help="diagnose the local setup").set_defaults(
+        func=lambda a: doctor.run())
 
     p_ctl = sub.add_parser("ctl", help="control the listener service")
     p_ctl.add_argument("action", choices=["on", "off", "toggle", "status"])

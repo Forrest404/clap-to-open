@@ -1,0 +1,40 @@
+name: Bug report
+description: Something isn't working
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! A few details make bugs much faster to fix.
+        Tip: run `clap doctor` and paste its output below — it captures most of this.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+      placeholder: I double-clapped and only 3 of 4 windows opened…
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS / desktop
+      placeholder: "Fedora 40, GNOME 46, Wayland  /  Windows 11 23H2"
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`clap doctor` output"
+      render: shell
+  - type: textarea
+    id: logs
+    attributes:
+      label: Listener log (if relevant)
+      description: "Linux: `journalctl --user -u clap-to-open.service -n 50`"
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "v1.0.0 or commit sha"

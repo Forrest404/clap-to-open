@@ -121,6 +121,18 @@ clap serve        # open the control panel at http://localhost:7333
 - ♻️ **Reset to defaults** in one click.
 - 📦 **Self-contained** — venv, config, layout and sounds all live in the folder.
 
+## Privacy
+
+**Your audio never leaves your machine.** The mic is used *only* to detect
+claps, analysed in real time by the local `clap-detector` library and
+immediately discarded:
+
+- 🔒 **No recording** to disk, **no network**, no cloud, no telemetry.
+- 🎚️ The listener is **off by default** — you turn it on (panel toggle or
+  `clap ctl on`); it isn't auto-enabled at install.
+- 👀 Open source — read exactly what it does in
+  [`listener.py`](src/clap_to_open/listener.py). See [SECURITY.md](SECURITY.md).
+
 ## Command line
 
 ```bash
@@ -128,6 +140,7 @@ clap serve [--port N] [--no-open]   # web control panel
 clap ctl on | off | toggle | status # control the listener
 clap save                           # capture the current window layout
 clap boot                           # replay the saved layout now
+clap doctor                         # diagnose your setup (run this if stuck)
 ```
 
 Bind a GNOME keyboard shortcut to `clap ctl toggle` for hands-free on/off.
