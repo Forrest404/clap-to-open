@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [1.1.0] - 2026-06-10
 ### Changed
 - **Installable via `pipx`/PyPI.** User data now lives in a standard per-user
   directory (`~/.config/clap-to-open`, `%APPDATA%\clap-to-open`) instead of beside
@@ -37,5 +39,6 @@ project adheres to [Semantic Versioning](https://semver.org/).
   abstraction layer.
 - One-line installers (`bootstrap.sh`, `bootstrap.ps1`); MIT license; CI matrix.
 
-[Unreleased]: https://github.com/Forrest404/clap-to-open/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Forrest404/clap-to-open/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Forrest404/clap-to-open/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Forrest404/clap-to-open/releases/tag/v1.0.0
