@@ -12,8 +12,35 @@ Notes / limitations:
   * Flatpak/wrapped apps may record a cmdline that doesn't replay verbatim.
 """
 import json
+import os
+import shlex
 
 from . import config, paths, platforms, sound
+
+# How common terminals run a command passed to them. Anything not listed falls
+# back to "-e" (xterm/konsole-style), which most terminals accept.
+_TERMINAL_RUN = {
+    "ptyxis": ["--"], "gnome-terminal": ["--"], "kgx": ["--"],
+    "kitty": [], "foot": [], "wezterm": ["start", "--"],
+    "konsole": ["-e"], "xterm": ["-e"], "uxterm": ["-e"], "alacritty": ["-e"],
+    "tilix": ["-e"], "terminator": ["-x"], "xfce4-terminal": ["-x"],
+    "wt": [], "windows-terminal": [],
+}
+
+
+def _build_argv(entry):
+    """Final launch argv, appending the optional ``run`` command for terminals."""
+    argv = [a for a in (entry.get("argv") or [])
+            if a != "--gapplication-service"]  # service flag never opens a window
+    run = (entry.get("run") or "").strip()
+    if run and argv:
+        term = os.path.splitext(os.path.basename(argv[0]))[0].lower()
+        sep = _TERMINAL_RUN.get(term, ["-e"])
+        try:
+            argv = argv + sep + shlex.split(run)
+        except ValueError:
+            argv = argv + sep + [run]
+    return argv
 
 
 def main():
@@ -45,7 +72,7 @@ def main():
     launched = []
     for entry in layout:
         try:
-            platforms.launch(entry["argv"])
+            platforms.launch(_build_argv(entry))
             launched.append(entry)
         except OSError as e:
             print(f"clap-to-open: could not launch {entry.get('wm_class')}: {e}",

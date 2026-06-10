@@ -119,6 +119,7 @@ function normalizeWin(w) {
     wm_class: w.wm_class || "",
     title: w.title || "",
     command: w.command != null ? w.command : shlexJoin(w.argv),
+    run: w.run || "",
     x: w.x || 0, y: w.y || 0,
     width: w.width || 900, height: w.height || 650,
     monitor: w.monitor || 0,
@@ -280,6 +281,8 @@ function makePanel(w) {
     </div>
     <label class="wp-row">Command
       <input data-f="command" value="${escapeHtml(w.command || "")}"></label>
+    <label class="wp-row">Run in terminal <span class="wp-hint">optional — e.g. claude</span>
+      <input data-f="run" value="${escapeHtml(w.run || "")}" placeholder="command to run inside this terminal"></label>
     <label class="wp-row">Window class ${tag}
       <input data-f="wm_class" value="${escapeHtml(w.wm_class || "")}"></label>
     <div class="wp-grid">
@@ -344,6 +347,7 @@ function payloadFromState() {
   return {
     windows: LZ.windows.map((w) => ({
       wm_class: w.wm_class, title: w.title || "", command: w.command,
+      run: w.run || "",
       x: w.x, y: w.y, width: w.width, height: w.height,
       monitor: w.monitor, maximized: w.maximized,
     })),

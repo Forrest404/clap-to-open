@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- **Run a command in a launched terminal** — each window has an optional
+  "Run in terminal" field (e.g. `claude`); boot appends it with the right syntax
+  for the terminal (ptyxis/gnome-terminal `--`, konsole/xterm `-e`, kitty, …).
+
+### Fixed
+- Window capture: stop splitting an exe path that contains a space (Mullvad),
+  resolve relative program paths (`./blender`) via the process cwd, and skip the
+  `--gapplication-service` flag that never opens a window.
+- Boot no longer waits on windows whose launch failed.
 
 ## [1.1.0] - 2026-06-10
 ### Changed
