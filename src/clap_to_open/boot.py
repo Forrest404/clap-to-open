@@ -12,14 +12,8 @@ Notes / limitations:
   * Flatpak/wrapped apps may record a cmdline that doesn't replay verbatim.
 """
 import json
-import subprocess
 
-from . import config, paths, sound, windows
-
-
-def _launch(argv):
-    """Fire-and-forget launch, inheriting the session env (Wayland/DBus)."""
-    return subprocess.Popen(list(argv))
+from . import config, paths, platforms, sound
 
 
 def main():
@@ -41,7 +35,7 @@ def main():
     # app depends on). Runs through the login shell so ~ and PATH resolve.
     pre = (cfg["boot"].get("pre_launch_command") or "").strip()
     if pre:
-        subprocess.run(["bash", "-lc", pre])
+        platforms.run_pre_launch(pre)
 
     sound.play(cfg)
 
@@ -49,7 +43,7 @@ def main():
     # Flatpak path) is skipped so it doesn't abort the rest of the boot.
     for entry in layout:
         try:
-            _launch(entry["argv"])
+            platforms.launch(entry["argv"])
         except OSError as e:
             print(f"clap-to-open: could not launch {entry.get('wm_class')}: {e}",
                   flush=True)
@@ -57,7 +51,7 @@ def main():
     # Place each window as it appears.
     placed = set()
     for entry in layout:
-        windows.place(entry, placed)
+        platforms.place(entry, placed)
 
 
 if __name__ == "__main__":

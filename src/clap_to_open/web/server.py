@@ -11,7 +11,7 @@ import webbrowser
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from .. import apps, config, hotkey, layout, monitors, save, service, sound
+from .. import config, layout, platforms, save, sound
 
 app = Flask(
     __name__,
@@ -27,20 +27,20 @@ def index():
 
 @app.get("/api/status")
 def api_status():
-    return jsonify(service.status())
+    return jsonify(platforms.svc_status())
 
 
 @app.post("/api/listening")
 def api_listening():
     on = bool(request.json.get("on"))
-    service.start() if on else service.stop()
-    return jsonify(service.status())
+    platforms.svc_start() if on else platforms.svc_stop()
+    return jsonify(platforms.svc_status())
 
 
 @app.post("/api/autostart")
 def api_autostart():
-    service.set_autostart(bool(request.json.get("on")))
-    return jsonify(service.status())
+    platforms.svc_set_autostart(bool(request.json.get("on")))
+    return jsonify(platforms.svc_status())
 
 
 @app.get("/api/config")
@@ -52,31 +52,31 @@ def api_get_config():
 def api_set_config():
     cfg = config.save(request.json or {})
     # Apply new sensitivity / clap-count by restarting the listener if running.
-    service.restart()
+    platforms.svc_restart()
     return jsonify(cfg)
 
 
 @app.post("/api/config/reset")
 def api_reset():
     cfg = config.reset()
-    service.restart()
+    platforms.svc_restart()
     return jsonify(cfg)
 
 
 @app.get("/api/hotkey")
 def api_get_hotkey():
-    return jsonify(hotkey.status())
+    return jsonify(platforms.hk_status())
 
 
 @app.post("/api/hotkey")
 def api_set_hotkey():
     accel = (request.json or {}).get("accel", "")
-    return jsonify(hotkey.set_binding(accel))
+    return jsonify(platforms.hk_set_binding(accel))
 
 
 @app.delete("/api/hotkey")
 def api_clear_hotkey():
-    return jsonify(hotkey.clear())
+    return jsonify(platforms.hk_clear())
 
 
 def _layout_payload():
@@ -84,7 +84,7 @@ def _layout_payload():
     return {
         "count": len(entries),
         "windows": layout.to_api(entries),
-        "monitors": monitors.list_monitors(),
+        "monitors": platforms.list_monitors(),
     }
 
 
@@ -95,7 +95,7 @@ def api_get_layout():
 
 @app.post("/api/layout")
 def api_set_layout():
-    mons = monitors.list_monitors()
+    mons = platforms.list_monitors()
     try:
         entries = layout.clean((request.json or {}).get("windows", []),
                                monitor_count=len(mons) or None)
@@ -119,12 +119,12 @@ def api_clear():
 
 @app.get("/api/monitors")
 def api_monitors():
-    return jsonify(monitors.list_monitors())
+    return jsonify(platforms.list_monitors())
 
 
 @app.get("/api/apps")
 def api_apps():
-    return jsonify(apps.list_apps())
+    return jsonify(platforms.list_apps())
 
 
 @app.get("/api/windows/open")

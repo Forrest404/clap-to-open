@@ -8,7 +8,7 @@
 import argparse
 import sys
 
-from . import boot, config, save, service
+from . import boot, config, platforms, save
 
 
 def _notify(title, body, icon=None):
@@ -24,18 +24,18 @@ def _notify(title, body, icon=None):
 def cmd_ctl(args):
     action = args.action
     if action == "status":
-        st = service.status()
+        st = platforms.svc_status()
         print(f"listening: {'on' if st['listening'] else 'off'}")
         print(f"autostart: {'on' if st['autostart'] else 'off'}")
         return
     if action == "on":
-        service.start()
+        platforms.svc_start()
         on = True
     elif action == "off":
-        service.stop()
+        platforms.svc_stop()
         on = False
     else:  # toggle
-        on = service.toggle()
+        on = platforms.svc_toggle()
     if on:
         print("clap-to-open: ON (listening for claps)")
         _notify("Clap to Open: ON", "Listening for claps.",

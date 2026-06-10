@@ -7,20 +7,20 @@ Captures every normal app window open right now — its launch command (from
 import json
 import os
 
-from . import paths, windows
+from . import paths, platforms
 
 
 def capture():
     """Return the list of layout entries for the currently open normal windows."""
     entries = []
-    for w in windows.win_list():
+    for w in platforms.win_list():
         if w.get("window_type") != 0:          # keep only NORMAL windows
             continue
-        argv = windows.cmdline(w["pid"])
+        argv = platforms.window_cmdline(w["pid"])
         if not argv:
             print(f"  skip {w.get('wm_class')}: no readable cmdline")
             continue
-        d = windows.wc_json("Details", w["id"]) or {}
+        d = platforms.window_details(w["id"]) or {}
         entries.append({
             "wm_class": w.get("wm_class"),
             "title": w.get("title"),
@@ -30,8 +30,7 @@ def capture():
             "width": d.get("width"),
             "height": d.get("height"),
             "monitor": d.get("monitor"),
-            "maximized": bool(d.get("maximized_horizontally")
-                              and d.get("maximized_vertically")),
+            "maximized": bool(d.get("maximized")),
         })
     return entries
 

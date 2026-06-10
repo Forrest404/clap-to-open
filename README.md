@@ -7,13 +7,15 @@ configured from a small local **web control panel** — no config files to edit.
 
 [![CI](https://github.com/Forrest404/clap-to-open/actions/workflows/ci.yml/badge.svg)](https://github.com/Forrest404/clap-to-open/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Platform](https://img.shields.io/badge/platform-GNOME%20%2F%20Wayland-informational)
+![Platform](https://img.shields.io/badge/platform-Linux%20(GNOME)%20%7C%20Windows-informational)
 
 ![Clap to Open control panel](docs/screenshot.png)
 
 ---
 
 ## Install
+
+### Linux (GNOME / Wayland)
 
 One command — clones the repo and sets everything up:
 
@@ -36,6 +38,33 @@ adds a *Clap to Open* application launcher. It’s safe to re-run.
 > **Heads-up:** window placement uses the GNOME **window-calls** extension. If
 > you don’t have it, the installer points you to it — it’s a one-click install
 > from [extensions.gnome.org](https://extensions.gnome.org/extension/4724/window-calls/).
+
+### Windows 10 / 11
+
+In PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Forrest404/clap-to-open/main/scripts/bootstrap.ps1 | iex
+```
+
+Or by hand:
+
+```powershell
+git clone https://github.com/Forrest404/clap-to-open.git
+cd clap-to-open
+powershell -ExecutionPolicy Bypass -File scripts\install.ps1
+```
+
+This creates the venv, installs the package (+ `pywin32`/`psutil`), and adds a
+Start-Menu shortcut. Window placement uses the Win32 API directly (no extension
+needed); the listener runs as a background `pythonw` process, autostart is a
+Startup-folder shortcut, and the global hotkey is registered by a small agent.
+
+> **Windows status:** the Windows backend is authored and CI-tested for
+> install/import, but window placement, sound, autostart and the global hotkey
+> have not yet been exercised on a real Windows desktop — please
+> [open an issue](https://github.com/Forrest404/clap-to-open/issues) if
+> something misbehaves.
 
 ### Install with an AI agent
 
@@ -121,6 +150,7 @@ immediately. `layout.json` stores captured window geometry/launch commands.
 
 ## Requirements
 
+**Linux:**
 - **GNOME on Wayland** (e.g. Fedora, Ubuntu) with the
   [**window-calls**](https://extensions.gnome.org/extension/4724/window-calls/)
   extension enabled.
@@ -128,6 +158,11 @@ immediately. `layout.json` stores captured window geometry/launch commands.
   library (the installer offers to install PortAudio for you on
   dnf/apt/pacman/zypper systems).
 - `paplay` **or** `ffplay` for the local startup sound.
+
+**Windows 10/11:**
+- **Python 3.9+** (PyAudio installs from a prebuilt wheel — no compiler needed).
+- `git` (for the one-line installer). `pywin32` + `psutil` are installed
+  automatically. Sound plays via the built-in Windows MCI API.
 
 ## Troubleshooting
 

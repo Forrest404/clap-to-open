@@ -8,7 +8,7 @@ import copy
 import json
 import os
 
-from . import paths
+from . import paths, platforms
 
 DEFAULTS = {
     "version": 1,
@@ -26,7 +26,8 @@ DEFAULTS = {
     },
     "sound": {
         "mode": "file",         # "file" | "url" | "off"
-        "file": "data/sounds/boot.ogg",
+        # Platform default: boot.ogg on Linux (paplay), boot.wav on Windows (mci).
+        "file": "data/sounds/" + platforms.DEFAULT_SOUND_FILENAME,
         "url": "",
     },
     "boot": {

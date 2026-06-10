@@ -7,7 +7,12 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -15,7 +20,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install PortAudio (for PyAudio)
+      - name: Install PortAudio (Linux, for PyAudio)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y portaudio19-dev
 
       - name: Install package
@@ -26,32 +32,5 @@ jobs:
       - name: Byte-compile sources
         run: python -m compileall src
 
-      - name: Import smoke test
-        run: |
-          python - <<'PY'
-          import clap_to_open.config as c
-          import clap_to_open.windows, clap_to_open.sound, clap_to_open.service
-          import clap_to_open.boot, clap_to_open.save, clap_to_open.cli
-          import clap_to_open.monitors, clap_to_open.apps
-          import clap_to_open.layout as L
-          from clap_to_open.web import server
-          cfg = c.load()
-          assert cfg["trigger"]["clap_count"] in (2, 3)
-          # config validation clamps bad values
-          assert c._validate({**c.DEFAULTS, "trigger": {"clap_count": 9, "cooldown_seconds": 5}})["trigger"]["clap_count"] == 2
-          # layout validation: command -> argv, and empty argv rejected
-          assert L.clean([{"wm_class": "x", "command": "/bin/x --y", "x": 0, "y": 0,
-                           "width": 10, "height": 10, "monitor": 0}])[0]["argv"] == ["/bin/x", "--y"]
-          try:
-              L.clean([{"wm_class": "x", "command": "", "width": 10, "height": 10}]); raise SystemExit("no error")
-          except ValueError:
-              pass
-          # monitors/apps degrade gracefully off-GNOME (no DBus) -> []
-          assert isinstance(clap_to_open.monitors.list_monitors(), list)
-          assert isinstance(clap_to_open.apps.list_apps(), list)
-          # editor endpoints respond
-          tc = server.app.test_client()
-          for ep in ("/api/layout", "/api/monitors", "/api/apps"):
-              assert tc.get(ep).status_code == 200, ep
-          print("smoke OK")
-          PY
+      - name: Smoke test
+        run: python tests/smoke.py

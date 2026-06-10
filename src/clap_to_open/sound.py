@@ -68,11 +68,16 @@ def _play_url(url):
 
 
 def play(cfg):
-    """Play the startup sound according to ``cfg['sound']``."""
+    """Play the startup sound according to ``cfg['sound']``, per-platform.
+
+    Imported lazily to avoid an import cycle (the platform backend delegates
+    file/url playback back into this module's ``_play_file``/``_play_url``).
+    """
+    from . import platforms
     snd = cfg.get("sound", {})
     mode = snd.get("mode", "off")
     if mode == "file":
-        _play_file(snd.get("file"))
+        platforms.play_file(snd.get("file"))
     elif mode == "url":
-        _play_url(snd.get("url"))
+        platforms.play_url(snd.get("url"))
     # mode == "off": do nothing

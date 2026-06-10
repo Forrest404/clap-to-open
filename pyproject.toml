@@ -11,6 +11,9 @@ requires-python = ">=3.9"
 dependencies = [
     "clap-detector",
     "flask>=3.0",
+    # Windows-only: window/process/shortcut access for the Win32 backend.
+    "pywin32; sys_platform == 'win32'",
+    "psutil; sys_platform == 'win32'",
 ]
 
 [project.scripts]
