@@ -37,6 +37,35 @@ adds a *Clap to Open* application launcher. It’s safe to re-run.
 > you don’t have it, the installer points you to it — it’s a one-click install
 > from [extensions.gnome.org](https://extensions.gnome.org/extension/4724/window-calls/).
 
+### Install with an AI agent
+
+Not comfortable with a terminal? Paste this prompt into an AI coding agent
+(Claude Code, Cursor, Copilot CLI, etc.) and let it do the install for you:
+
+```text
+Install the "Clap to Open" app from https://github.com/Forrest404/clap-to-open
+on my machine. It's a Linux tool for GNOME on Wayland that lets me double-clap
+to relaunch a saved window layout, configured from a local web control panel.
+
+Please:
+1. Confirm I'm on Linux running GNOME on Wayland (check $XDG_SESSION_TYPE and
+   $XDG_CURRENT_DESKTOP). If not, warn me — this tool targets GNOME/Wayland.
+2. Make sure the GNOME "window-calls" extension is installed and enabled
+   (gnome-extensions list | grep window-calls). If it's missing, tell me to
+   install it from https://extensions.gnome.org/extension/4724/window-calls/
+   and enable it before continuing.
+3. Run the installer:
+   curl -fsSL https://raw.githubusercontent.com/Forrest404/clap-to-open/main/scripts/bootstrap.sh | bash
+   It clones to ~/.local/share/clap-to-open, creates a venv, and registers a
+   systemd user service + app launcher. If it asks to install PortAudio (needed
+   by the mic library) or a sound player, approve that.
+4. When it finishes, open the control panel by running:
+   ~/.local/share/clap-to-open/venv/bin/clap serve
+   then tell me to capture my current window layout, tune the clap sensitivity,
+   and switch "Listening" on.
+5. Report any errors and how you resolved them.
+```
+
 ## Quick start
 
 ```bash
