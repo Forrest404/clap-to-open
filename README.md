@@ -56,6 +56,7 @@ Then `clap serve`. On Linux you still need the GNOME **window-calls** extension
 (see below); run `clap doctor` to check everything at once.
 
 ### Windows 10 / 11
+I didnt test it because i dont use windows. try it out but it might not work.
 
 In PowerShell:
 
