@@ -14,7 +14,7 @@ from .. import service as _service
 from .. import sound as _sound
 from .. import windows as _windows
 
-DEFAULT_SOUND_FILENAME = "boot.ogg"
+DEFAULT_SOUND_FILENAME = "ironman.mp3"
 
 
 # --- windows: enumerate / inspect / place ---

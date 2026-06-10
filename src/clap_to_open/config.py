@@ -27,7 +27,7 @@ DEFAULTS = {
     },
     "sound": {
         "mode": "file",         # "file" | "url" | "off"
-        # Empty = the bundled default chime (boot.ogg on Linux / boot.wav on
+        # Empty = the bundled default sound (ironman.mp3 on Linux / boot.wav on
         # Windows, shipped inside the package). A non-empty path overrides it.
         "file": "",
         "url": "",
