@@ -5,7 +5,11 @@ const api = async (method, path, body) => {
   const opt = { method, headers: { "Content-Type": "application/json" } };
   if (body !== undefined) opt.body = JSON.stringify(body);
   const r = await fetch(path, opt);
-  if (!r.ok) throw new Error(`${path} -> ${r.status}`);
+  if (!r.ok) {
+    let msg = `${path} -> ${r.status}`;
+    try { const j = await r.json(); if (j && j.error) msg = j.error; } catch (_) {}
+    throw new Error(msg);
+  }
   return r.json();
 };
 
@@ -88,32 +92,367 @@ function showSoundPanels(mode) {
     el.classList.toggle("show", el.dataset.sound === mode));
 }
 
-/* ---- Layout ---- */
-function renderLayout(data) {
-  $("layoutSummary").textContent = data.count
-    ? `${data.count} window${data.count > 1 ? "s" : ""} saved.`
-    : "No layout captured.";
-  $("winList").innerHTML = data.windows.map((w) =>
-    `<li><span class="wclass">${escapeHtml(w.wm_class || "?")}</span>` +
-    `<span class="geo">mon ${w.monitor} · ${escapeHtml(w.geometry)}</span></li>`
-  ).join("");
-}
+/* ====================== Workspace layout editor ====================== */
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
+// Minimal shlex.quote-style join so the server's shlex.split reverses it.
+function shlexJoin(argv) {
+  return (argv || []).map((a) =>
+    /[\s"'\\]/.test(a) ? "'" + String(a).replace(/'/g, "'\\''") + "'" : a
+  ).join(" ");
+}
 
+let LZ = { monitors: [], windows: [] };   // layout state (source of truth)
+let view = { scale: 1, minX: 0, minY: 0 };
+let layoutDirty = false;
+let selectedId = null;
+let appsCache = null;
+let uid = 1;
+
+function setLayoutDirty(d) { layoutDirty = d; $("dirtyTag").hidden = !d; }
+
+function normalizeWin(w) {
+  return {
+    id: w.id != null ? "w" + (uid++) : "w" + (uid++),
+    wm_class: w.wm_class || "",
+    title: w.title || "",
+    command: w.command != null ? w.command : shlexJoin(w.argv),
+    x: w.x || 0, y: w.y || 0,
+    width: w.width || 900, height: w.height || 650,
+    monitor: w.monitor || 0,
+    maximized: !!w.maximized,
+    _name: w._name || w.title || w.wm_class || "window",
+    _guessed: !!w._guessed,
+  };
+}
+
+/* ---- coordinate transform (logical screen space <-> canvas pixels) ---- */
+function computeView() {
+  const map = $("screenMap");
+  const availW = map.clientWidth || 600;
+  const mons = LZ.monitors;
+  if (!mons.length) { view = { scale: 0.25, minX: 0, minY: 0 }; map.style.height = "120px"; return; }
+  const minX = Math.min(...mons.map((m) => m.x));
+  const minY = Math.min(...mons.map((m) => m.y));
+  const maxX = Math.max(...mons.map((m) => m.x + m.width));
+  const maxY = Math.max(...mons.map((m) => m.y + m.height));
+  const worldW = (maxX - minX) || 1, worldH = (maxY - minY) || 1;
+  const scale = Math.min(availW / worldW, 320 / worldH);
+  view = { scale, minX, minY };
+  map.style.height = Math.ceil(worldH * scale) + "px";
+}
+const toPx = (lx, ly) => [(lx - view.minX) * view.scale, (ly - view.minY) * view.scale];
+const toLogical = (px, py) => [Math.round(px / view.scale + view.minX), Math.round(py / view.scale + view.minY)];
+
+function monitorAt(w) {
+  const cx = w.x + w.width / 2, cy = w.y + w.height / 2;
+  for (const m of LZ.monitors)
+    if (cx >= m.x && cx < m.x + m.width && cy >= m.y && cy < m.y + m.height) return m.index;
+  return w.monitor || 0;
+}
+
+/* ---- render ---- */
+function renderAll() { renderMap(); renderPanels(); }
+
+function renderMap() {
+  computeView();
+  const map = $("screenMap");
+  map.innerHTML = "";
+  for (const m of LZ.monitors) {
+    const [px, py] = toPx(m.x, m.y);
+    const d = document.createElement("div");
+    d.className = "mon";
+    d.style.left = px + "px"; d.style.top = py + "px";
+    d.style.width = m.width * view.scale + "px";
+    d.style.height = m.height * view.scale + "px";
+    d.innerHTML = `<span class="mon-label">${escapeHtml(m.connector)}${m.primary ? " ★" : ""} · ${m.width}×${m.height}</span>`;
+    map.appendChild(d);
+  }
+  for (const w of LZ.windows) map.appendChild(makeBlock(w));
+}
+
+function makeBlock(w) {
+  const b = document.createElement("div");
+  b.className = "win-block" + (w.id === selectedId ? " selected" : "") + (w.maximized ? " maximized" : "");
+  b.dataset.id = w.id;
+  positionBlock(b, w);
+  b.innerHTML = `<span class="wb-label">${escapeHtml(w._name || w.wm_class || "window")}</span>` +
+    ["nw", "ne", "sw", "se"].map((d) => `<span class="handle ${d}" data-dir="${d}"></span>`).join("");
+  b.addEventListener("pointerdown", (e) => onBlockDown(e, w, b));
+  return b;
+}
+
+function positionBlock(b, w) {
+  let x = w.x, y = w.y, width = w.width, height = w.height;
+  if (w.maximized) {
+    const m = LZ.monitors.find((mm) => mm.index === w.monitor) || LZ.monitors[0];
+    if (m) { x = m.x; y = m.y; width = m.width; height = m.height; }
+  }
+  const [px, py] = toPx(x, y);
+  b.style.left = px + "px"; b.style.top = py + "px";
+  b.style.width = Math.max(8, width * view.scale) + "px";
+  b.style.height = Math.max(8, height * view.scale) + "px";
+}
+
+function reflectWindow(w) {
+  const b = $("screenMap").querySelector(`.win-block[data-id="${w.id}"]`);
+  if (b) { b.classList.toggle("maximized", !!w.maximized); positionBlock(b, w); }
+}
+function syncPanel(w) {
+  const p = $("winPanels").querySelector(`.wpanel[data-id="${w.id}"]`);
+  if (!p) return;
+  ["x", "y", "width", "height"].forEach((f) => { const el = p.querySelector(`[data-f="${f}"]`); if (el) el.value = w[f]; });
+  const ms = p.querySelector('[data-f="monitor"]'); if (ms) ms.value = w.monitor;
+}
+
+/* ---- drag + resize (Pointer Events) ---- */
+function onBlockDown(e, w, b) {
+  e.preventDefault();
+  selectWindow(w.id);
+  if (w.maximized) return;
+  const dir = e.target.dataset.dir || "";
+  const sx = e.clientX, sy = e.clientY;
+  const o = { x: w.x, y: w.y, width: w.width, height: w.height };
+  const SNAP = 12 / view.scale;
+  b.setPointerCapture(e.pointerId);
+  function move(ev) {
+    const dlx = (ev.clientX - sx) / view.scale, dly = (ev.clientY - sy) / view.scale;
+    if (!dir) {
+      w.x = Math.round(o.x + dlx); w.y = Math.round(o.y + dly);
+      snapWindow(w, SNAP);
+    } else {
+      if (dir.includes("e")) w.width = Math.max(200, Math.round(o.width + dlx));
+      if (dir.includes("s")) w.height = Math.max(150, Math.round(o.height + dly));
+      if (dir.includes("w")) { const nw = Math.max(200, Math.round(o.width - dlx)); w.x = Math.round(o.x + (o.width - nw)); w.width = nw; }
+      if (dir.includes("n")) { const nh = Math.max(150, Math.round(o.height - dly)); w.y = Math.round(o.y + (o.height - nh)); w.height = nh; }
+    }
+    w.monitor = monitorAt(w);
+    positionBlock(b, w); syncPanel(w); setLayoutDirty(true);
+  }
+  function up() { b.removeEventListener("pointermove", move); b.removeEventListener("pointerup", up); }
+  b.addEventListener("pointermove", move);
+  b.addEventListener("pointerup", up);
+}
+
+function snapWindow(w, SNAP) {
+  for (const m of LZ.monitors) {
+    for (const ex of [m.x, m.x + m.width]) {
+      if (Math.abs(w.x - ex) < SNAP) w.x = ex;
+      if (Math.abs(w.x + w.width - ex) < SNAP) w.x = ex - w.width;
+    }
+    for (const ey of [m.y, m.y + m.height]) {
+      if (Math.abs(w.y - ey) < SNAP) w.y = ey;
+      if (Math.abs(w.y + w.height - ey) < SNAP) w.y = ey - w.height;
+    }
+  }
+}
+
+/* ---- per-window panels ---- */
+function renderPanels() {
+  const root = $("winPanels");
+  root.innerHTML = "";
+  if (!LZ.windows.length) {
+    root.innerHTML = `<p class="muted">No windows yet — use “＋ Add app” or “Capture current”.</p>`;
+  } else {
+    LZ.windows.forEach((w) => root.appendChild(makePanel(w)));
+  }
+  const n = LZ.windows.length;
+  $("layoutSummary").textContent = n
+    ? `${n} window${n > 1 ? "s" : ""} — drag to arrange, then Save layout.`
+    : "Pick which apps open and drag them where you want.";
+}
+
+function makePanel(w) {
+  const p = document.createElement("div");
+  p.className = "wpanel" + (w.id === selectedId ? " selected" : "");
+  p.dataset.id = w.id;
+  const monOpts = LZ.monitors.map((m) =>
+    `<option value="${m.index}" ${m.index === w.monitor ? "selected" : ""}>${escapeHtml(m.connector)}</option>`).join("");
+  const tag = !w.wm_class ? `<span class="warn-tag">no class · won't place</span>`
+    : w._guessed ? `<span class="warn-tag" title="Guessed — edit if placement fails">guessed</span>` : "";
+  p.innerHTML = `
+    <div class="wpanel-head">
+      <span class="wb-dot"></span>
+      <input class="wp-name" data-f="_name" value="${escapeHtml(w._name || w.wm_class || "window")}">
+      <button class="icon-btn wp-del" title="Remove">🗑</button>
+    </div>
+    <label class="wp-row">Command
+      <input data-f="command" value="${escapeHtml(w.command || "")}"></label>
+    <label class="wp-row">Window class ${tag}
+      <input data-f="wm_class" value="${escapeHtml(w.wm_class || "")}"></label>
+    <div class="wp-grid">
+      <label>Monitor<select data-f="monitor">${monOpts}</select></label>
+      <label class="wp-max"><input type="checkbox" data-f="maximized" ${w.maximized ? "checked" : ""}> Maximize</label>
+      <label>X<input type="number" data-f="x" value="${w.x}"></label>
+      <label>Y<input type="number" data-f="y" value="${w.y}"></label>
+      <label>W<input type="number" data-f="width" value="${w.width}"></label>
+      <label>H<input type="number" data-f="height" value="${w.height}"></label>
+    </div>`;
+  p.querySelectorAll("[data-f]").forEach((el) => {
+    const f = el.dataset.f;
+    const evt = (el.type === "checkbox" || el.tagName === "SELECT") ? "change" : "input";
+    el.addEventListener(evt, () => {
+      if (el.type === "checkbox") w[f] = el.checked;
+      else if (el.type === "number") w[f] = parseInt(el.value || "0", 10);
+      else if (f === "monitor") { w.monitor = parseInt(el.value, 10); snapIntoMonitor(w); syncPanel(w); }
+      else w[f] = el.value;
+      if (f === "wm_class") w._guessed = false;
+      setLayoutDirty(true);
+      reflectWindow(w);
+      if (f === "_name") { const b = $("screenMap").querySelector(`.win-block[data-id="${w.id}"] .wb-label`); if (b) b.textContent = w._name; }
+    });
+  });
+  p.querySelector(".wp-del").addEventListener("click", () => {
+    LZ.windows = LZ.windows.filter((x) => x !== w);
+    if (selectedId === w.id) selectedId = null;
+    setLayoutDirty(true); renderAll();
+  });
+  p.querySelector(".wpanel-head").addEventListener("click", (e) => {
+    if (!e.target.closest("button, input")) selectWindow(w.id);
+  });
+  return p;
+}
+
+function snapIntoMonitor(w) {
+  const m = LZ.monitors.find((mm) => mm.index === w.monitor);
+  if (!m) return;
+  if (w.x < m.x || w.x + w.width > m.x + m.width || w.y < m.y || w.y + w.height > m.y + m.height) {
+    w.width = Math.min(w.width, m.width);
+    w.height = Math.min(w.height, m.height);
+    w.x = m.x + Math.max(0, Math.round((m.width - w.width) / 2));
+    w.y = m.y + Math.max(0, Math.round((m.height - w.height) / 2));
+  }
+}
+
+function selectWindow(id) {
+  selectedId = id;
+  $("screenMap").querySelectorAll(".win-block").forEach((b) => b.classList.toggle("selected", b.dataset.id === id));
+  $("winPanels").querySelectorAll(".wpanel").forEach((p) => p.classList.toggle("selected", p.dataset.id === id));
+}
+
+/* ---- load / save / capture / clear / boot ---- */
+async function loadLayout() {
+  const data = await api("GET", "/api/layout");
+  LZ.monitors = data.monitors || [];
+  LZ.windows = (data.windows || []).map(normalizeWin);
+  selectedId = null; setLayoutDirty(false); renderAll();
+}
+
+function payloadFromState() {
+  return {
+    windows: LZ.windows.map((w) => ({
+      wm_class: w.wm_class, title: w.title || "", command: w.command,
+      x: w.x, y: w.y, width: w.width, height: w.height,
+      monitor: w.monitor, maximized: w.maximized,
+    })),
+  };
+}
+
+async function saveLayout() {
+  try {
+    const res = await api("POST", "/api/layout", payloadFromState());
+    LZ.monitors = res.monitors || LZ.monitors;
+    LZ.windows = (res.windows || []).map(normalizeWin);
+    selectedId = null; setLayoutDirty(false); renderAll();
+    toast("Layout saved");
+  } catch (e) { toast("Save failed: " + e.message); }
+}
+
+function placeNew(w) {
+  const m = LZ.monitors.find((mm) => mm.primary) || LZ.monitors[0] || { x: 0, y: 0, width: 1280, height: 800, index: 0 };
+  w.width = Math.min(w.width || 900, Math.round(m.width * 0.6));
+  w.height = Math.min(w.height || 650, Math.round(m.height * 0.6));
+  w.x = m.x + Math.round((m.width - w.width) / 2);
+  w.y = m.y + Math.round((m.height - w.height) / 2);
+  w.monitor = m.index;
+}
+
+$("saveLayoutBtn").addEventListener("click", saveLayout);
 $("captureBtn").addEventListener("click", async () => {
-  renderLayout(await api("POST", "/api/layout/capture"));
-  toast("Captured current layout");
+  if (layoutDirty && !confirm("Capture replaces the editor with your CURRENT windows. Discard unsaved edits?")) return;
+  const res = await api("POST", "/api/layout/capture");
+  LZ.monitors = res.monitors || LZ.monitors;
+  LZ.windows = (res.windows || []).map(normalizeWin);
+  selectedId = null; setLayoutDirty(false); renderAll();
+  toast("Captured current windows");
 });
 $("clearBtn").addEventListener("click", async () => {
-  renderLayout(await api("POST", "/api/layout/clear"));
+  if (!confirm("Clear the whole layout?")) return;
+  await api("POST", "/api/layout/clear");
+  LZ.windows = []; selectedId = null; setLayoutDirty(false); renderAll();
   toast("Layout cleared");
 });
 $("testBoot").addEventListener("click", async () => {
   await api("POST", "/api/test-boot");
-  toast("Replaying layout…");
+  toast(layoutDirty ? "Boot replays the SAVED layout — Save first" : "Replaying layout…");
+});
+
+/* ---- add-app modal (installed / open windows / manual) ---- */
+let addSource = "installed";
+function openAdd() { $("addModal").hidden = false; $("addSearch").value = ""; if (addSource !== "manual") renderAddList(); }
+function closeAdd() { $("addModal").hidden = true; }
+$("addAppBtn").addEventListener("click", openAdd);
+$("addClose").addEventListener("click", closeAdd);
+$("addModal").addEventListener("click", (e) => { if (e.target.id === "addModal") closeAdd(); });
+$("addSearch").addEventListener("input", renderAddList);
+
+async function renderAddList() {
+  const list = $("addList");
+  const q = $("addSearch").value.toLowerCase();
+  let items = [];
+  if (addSource === "installed") {
+    if (!appsCache) appsCache = await api("GET", "/api/apps");
+    items = appsCache
+      .filter((a) => a.name.toLowerCase().includes(q))
+      .map((a) => ({ name: a.name, exec: a.exec, wm_class: a.wm_class, guessed: a.wm_class_guessed }));
+  } else if (addSource === "open") {
+    const ws = await api("GET", "/api/windows/open");
+    items = ws
+      .filter((w) => (w.wm_class || "").toLowerCase().includes(q) || (w.title || "").toLowerCase().includes(q))
+      .map((w) => ({ name: w.title || w.wm_class, win: w }));
+  }
+  list.innerHTML = items.slice(0, 300).map((it, i) =>
+    `<button class="add-item" data-i="${i}"><span class="ai-mono">${escapeHtml((it.name || "?").trim()[0] || "?").toUpperCase()}</span>` +
+    `<span class="ai-name">${escapeHtml(it.name || "?")}</span></button>`).join("")
+    || `<p class="muted">No matches.</p>`;
+  list.querySelectorAll(".add-item").forEach((el) =>
+    el.addEventListener("click", () => addFromItem(items[+el.dataset.i])));
+}
+
+function addFromItem(it) {
+  let w;
+  if (it.win) {
+    w = normalizeWin({ ...it.win, command: shlexJoin(it.win.argv) });
+  } else {
+    w = normalizeWin({ wm_class: it.wm_class, command: shlexJoin(it.exec), _name: it.name, _guessed: it.guessed });
+    placeNew(w);
+  }
+  LZ.windows.push(w);
+  selectedId = w.id; setLayoutDirty(true); closeAdd(); renderAll();
+  toast(`Added ${w._name}`);
+}
+
+$("manualAdd").addEventListener("click", () => {
+  const name = $("manualName").value.trim();
+  const cmd = $("manualCmd").value.trim();
+  const cls = $("manualClass").value.trim();
+  if (!cmd) { toast("Enter a command"); return; }
+  const w = normalizeWin({ wm_class: cls, command: cmd, _name: name || cls || "app" });
+  placeNew(w);
+  LZ.windows.push(w);
+  selectedId = w.id; setLayoutDirty(true);
+  $("manualName").value = $("manualCmd").value = $("manualClass").value = "";
+  closeAdd(); renderAll();
+  toast(`Added ${w._name}`);
+});
+
+// Re-fit the canvas when the window resizes.
+let _rsT;
+window.addEventListener("resize", () => {
+  clearTimeout(_rsT);
+  _rsT = setTimeout(() => { if (LZ.monitors.length) renderMap(); }, 150);
 });
 $("testSound").addEventListener("click", async () => {
   await api("POST", "/api/test-sound");
@@ -254,6 +593,15 @@ async function init() {
 
   lastHotkey = await api("GET", "/api/hotkey");
   renderHotkey(lastHotkey);
+
+  setupSegmented("addSource", (v) => {
+    addSource = v;
+    $("addManual").hidden = v !== "manual";
+    $("addList").hidden = v === "manual";
+    $("addSearch").hidden = v === "manual";
+    if (v !== "manual") renderAddList();
+  });
+  await loadLayout();
 
   await pollStatus();
   setInterval(pollStatus, 2000);

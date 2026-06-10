@@ -4,8 +4,6 @@ The page is a single static template driven by ``fetch`` calls (no build step).
 Every mutating endpoint funnels through :mod:`clap_to_open.config` and
 :mod:`clap_to_open.service` so the listener and boot always see consistent state.
 """
-import json
-import os
 import subprocess
 import sys
 import threading
@@ -13,7 +11,7 @@ import webbrowser
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from .. import config, hotkey, paths, save, service, sound
+from .. import apps, config, hotkey, layout, monitors, save, service, sound
 
 app = Flask(
     __name__,
@@ -81,35 +79,57 @@ def api_clear_hotkey():
     return jsonify(hotkey.clear())
 
 
+def _layout_payload():
+    entries = layout.load()
+    return {
+        "count": len(entries),
+        "windows": layout.to_api(entries),
+        "monitors": monitors.list_monitors(),
+    }
+
+
 @app.get("/api/layout")
 def api_get_layout():
+    return jsonify(_layout_payload())
+
+
+@app.post("/api/layout")
+def api_set_layout():
+    mons = monitors.list_monitors()
     try:
-        with open(paths.LAYOUT_PATH) as f:
-            layout = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        layout = []
-    summary = [{
-        "wm_class": e.get("wm_class"),
-        "title": e.get("title"),
-        "monitor": e.get("monitor"),
-        "maximized": e.get("maximized"),
-        "geometry": ("maximized" if e.get("maximized")
-                     else f"{e.get('width')}x{e.get('height')} "
-                          f"@ {e.get('x')},{e.get('y')}"),
-    } for e in layout]
-    return jsonify({"count": len(layout), "windows": summary})
+        entries = layout.clean((request.json or {}).get("windows", []),
+                               monitor_count=len(mons) or None)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    save.save(entries)
+    return jsonify(_layout_payload())
 
 
 @app.post("/api/layout/capture")
 def api_capture():
     save.save(save.capture())
-    return api_get_layout()
+    return jsonify(_layout_payload())
 
 
 @app.post("/api/layout/clear")
 def api_clear():
     save.save([])
-    return api_get_layout()
+    return jsonify(_layout_payload())
+
+
+@app.get("/api/monitors")
+def api_monitors():
+    return jsonify(monitors.list_monitors())
+
+
+@app.get("/api/apps")
+def api_apps():
+    return jsonify(apps.list_apps())
+
+
+@app.get("/api/windows/open")
+def api_open_windows():
+    return jsonify(save.capture())
 
 
 @app.post("/api/test-boot")

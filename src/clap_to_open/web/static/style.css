@@ -187,6 +187,95 @@ input:checked + .slider::before { transform: translateX(22px); }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ===== Workspace layout editor ===== */
+.card-head { display: flex; align-items: center; gap: 10px; }
+.dirty { color: #f0b429; font-size: 12px; font-weight: 600; }
+
+/* Screen map (to-scale monitors) */
+.screen-map {
+  position: relative; width: 100%; margin: 12px 0 16px;
+  background: #0b0e13; border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden;
+}
+.mon {
+  position: absolute; box-sizing: border-box;
+  border: 1px dashed #3a4763; background: rgba(91,140,255,.05);
+}
+.mon-label {
+  position: absolute; top: 4px; left: 6px; font-size: 11px; color: var(--muted);
+  pointer-events: none; white-space: nowrap;
+}
+.win-block {
+  position: absolute; box-sizing: border-box; cursor: grab;
+  background: linear-gradient(180deg, rgba(91,140,255,.85), rgba(91,140,255,.55));
+  border: 1px solid var(--accent-hi); border-radius: 4px; touch-action: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35); overflow: hidden;
+}
+.win-block:active { cursor: grabbing; }
+.win-block.selected { outline: 2px solid #fff; z-index: 5; }
+.win-block.maximized { background: linear-gradient(180deg, rgba(63,185,80,.8), rgba(63,185,80,.5)); border-color: var(--ok); }
+.wb-label {
+  position: absolute; top: 3px; left: 5px; right: 5px; font-size: 11px; color: #fff;
+  font-weight: 600; pointer-events: none; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+}
+.handle { position: absolute; width: 12px; height: 12px; z-index: 6; }
+.handle.nw { top: -3px; left: -3px; cursor: nwse-resize; }
+.handle.ne { top: -3px; right: -3px; cursor: nesw-resize; }
+.handle.sw { bottom: -3px; left: -3px; cursor: nesw-resize; }
+.handle.se { bottom: -3px; right: -3px; cursor: nwse-resize; }
+.win-block.maximized .handle { display: none; }
+
+/* Per-window panels */
+.win-panels { display: flex; flex-direction: column; gap: 10px; }
+.wpanel {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+}
+.wpanel.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.wpanel-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.wb-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); flex: none; }
+.wp-name { flex: 1; font-weight: 600; background: transparent; border: 1px solid transparent;
+  color: var(--text); padding: 4px 6px; border-radius: 6px; font: inherit; font-weight: 600; }
+.wp-name:hover, .wp-name:focus { border-color: var(--border); background: var(--bg2); outline: none; }
+.wp-row { display: block; font-size: 12px; color: var(--muted); margin-top: 10px; }
+.wp-row input { width: 100%; margin-top: 4px; padding: 8px 10px; border-radius: 8px;
+  background: var(--bg2); border: 1px solid var(--border); color: var(--text); font: inherit; }
+.wp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.wp-grid label { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.wp-grid input[type=number], .wp-grid select {
+  padding: 7px 8px; border-radius: 8px; background: var(--bg2);
+  border: 1px solid var(--border); color: var(--text); font: inherit;
+}
+.wp-max { flex-direction: row !important; align-items: center; gap: 6px !important; }
+.warn-tag { color: #f0b429; font-size: 10px; font-weight: 700; margin-left: 6px;
+  border: 1px solid #5a4a1a; padding: 1px 5px; border-radius: 999px; }
+.icon-btn { background: transparent; border: none; color: var(--muted); cursor: pointer;
+  font-size: 15px; padding: 4px 6px; border-radius: 6px; }
+.icon-btn:hover { color: var(--danger); background: rgba(240,80,110,.1); }
+
+/* Add-app modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 50; }
+.modal[hidden] { display: none; }
+.modal-card { width: min(520px, 92vw); max-height: 80vh; display: flex; flex-direction: column;
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.modal-head h3 { margin: 0; }
+.modal-card .segmented { margin-bottom: 12px; }
+.modal-card > input[type=text] { width: 100%; padding: 10px 12px; border-radius: 10px;
+  background: var(--bg); border: 1px solid var(--border); color: var(--text); font: inherit; margin-bottom: 10px; }
+.add-list { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.add-item { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  color: var(--text); cursor: pointer; font: inherit; }
+.add-item:hover { border-color: var(--accent); background: var(--card-hi); }
+.ai-mono { width: 30px; height: 30px; flex: none; display: grid; place-items: center;
+  border-radius: 7px; font-weight: 700; color: #fff;
+  background: linear-gradient(145deg, var(--accent), #8a5bff); }
+.ai-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.add-manual { display: flex; flex-direction: column; gap: 8px; }
+.add-manual input { padding: 10px 12px; border-radius: 10px; background: var(--bg);
+  border: 1px solid var(--border); color: var(--text); font: inherit; }
+
 @media (max-width: 520px) {
   .grid2 { grid-template-columns: 1fr; }
+  .wp-grid { grid-template-columns: repeat(2, 1fr); }
 }

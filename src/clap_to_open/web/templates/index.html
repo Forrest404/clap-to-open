@@ -123,17 +123,27 @@
         <button class="btn ghost" id="testSound">▶ Test sound</button>
       </section>
 
-      <!-- Workspace -->
+      <!-- Workspace layout editor -->
       <section class="card">
-        <h2>Workspace layout</h2>
-        <p class="muted" id="layoutSummary">No layout captured.</p>
-        <ul class="winlist" id="winList"></ul>
+        <div class="card-head">
+          <h2>Workspace layout</h2>
+          <span class="dirty" id="dirtyTag" hidden>● unsaved</span>
+        </div>
+        <p class="muted" id="layoutSummary">Pick which apps open and drag them where you want.</p>
+
+        <div class="screen-map" id="screenMap"></div>
+
+        <div class="win-panels" id="winPanels"></div>
+
         <div class="btnrow">
-          <button class="btn" id="captureBtn">⛶ Capture current layout</button>
+          <button class="btn" id="addAppBtn">＋ Add app</button>
+          <button class="btn ghost" id="captureBtn">⛶ Capture current</button>
           <button class="btn ghost" id="testBoot">▶ Test boot</button>
+          <button class="btn" id="saveLayoutBtn">Save layout</button>
           <button class="btn danger ghost" id="clearBtn">Clear</button>
         </div>
-        <p class="muted small">Capture saves every open window's position so a clap restores them.</p>
+        <p class="muted small">Drag a window block to move it, drag a corner to resize.
+          Boot replays the <em>saved</em> layout — Save after editing.</p>
       </section>
 
       <!-- Advanced -->
@@ -155,6 +165,29 @@
         </div>
       </section>
     </main>
+
+    <!-- Add-app modal -->
+    <div class="modal" id="addModal" hidden>
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Add an app</h3>
+          <button class="icon-btn" id="addClose" aria-label="Close">✕</button>
+        </div>
+        <div class="segmented" id="addSource">
+          <button data-val="installed" class="seg active">Installed apps</button>
+          <button data-val="open" class="seg">Open windows</button>
+          <button data-val="manual" class="seg">Manual</button>
+        </div>
+        <input type="text" id="addSearch" placeholder="Search…">
+        <div class="add-list" id="addList"></div>
+        <div class="add-manual" id="addManual" hidden>
+          <input type="text" id="manualName" placeholder="Name (e.g. Terminal)">
+          <input type="text" id="manualCmd" placeholder="Command, e.g. /usr/bin/ptyxis --new-window">
+          <input type="text" id="manualClass" placeholder="Window class (wm_class) — needed for placement">
+          <button class="btn" id="manualAdd">Add to layout</button>
+        </div>
+      </div>
+    </div>
 
     <div class="toast" id="toast"></div>
   </div>

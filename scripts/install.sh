@@ -46,7 +46,10 @@ if ! python3 -m venv --help >/dev/null 2>&1; then
 fi
 
 # ---- 2. Self-contained venv + package ---------------------------------------
-[ -d "$VENV" ] || { say "Creating venv at $VENV"; python3 -m venv "$VENV"; }
+# --system-site-packages so we can import the system PyGObject (gi) for the
+# monitor layout (Mutter DisplayConfig) and app picker. PyGObject ships with
+# GNOME and isn't pip-installable cleanly, so we borrow it from the system.
+[ -d "$VENV" ] || { say "Creating venv at $VENV"; python3 -m venv --system-site-packages "$VENV"; }
 "$VENV/bin/pip" install --upgrade pip >/dev/null
 
 say "Installing the package + dependencies"
