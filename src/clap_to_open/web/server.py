@@ -11,7 +11,7 @@ import webbrowser
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from .. import config, layout, platforms, save, sound
+from .. import config, doctor, layout, platforms, save, sound
 
 app = Flask(
     __name__,
@@ -61,6 +61,19 @@ def api_reset():
     cfg = config.reset()
     platforms.svc_restart()
     return jsonify(cfg)
+
+
+@app.get("/api/doctor")
+def api_doctor():
+    return jsonify(doctor.check())
+
+
+@app.post("/api/onboarded")
+def api_onboarded():
+    cfg = config.load()
+    cfg["onboarded"] = bool((request.json or {}).get("done", True))
+    config.save(cfg)
+    return jsonify({"onboarded": cfg["onboarded"]})
 
 
 @app.get("/api/hotkey")

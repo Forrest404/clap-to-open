@@ -275,6 +275,53 @@ input:checked + .slider::before { transform: translateX(22px); }
 .add-manual input { padding: 10px 12px; border-radius: 10px; background: var(--bg);
   border: 1px solid var(--border); color: var(--text); font: inherit; }
 
+/* ===== Onboarding wizard ===== */
+.onboard {
+  position: fixed; inset: 0; background: rgba(5, 7, 11, .75);
+  display: grid; place-items: center; z-index: 100; padding: 16px;
+  backdrop-filter: blur(3px);
+}
+.onboard[hidden] { display: none; }
+.ob-card {
+  width: min(540px, 94vw); background: linear-gradient(180deg, var(--card), var(--bg2));
+  border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
+  padding: 26px 26px 18px; display: flex; flex-direction: column; gap: 14px;
+}
+.ob-dots { display: flex; gap: 8px; justify-content: center; }
+.ob-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: #39435a; transition: .2s;
+}
+.ob-dot.active { background: var(--accent); transform: scale(1.25); }
+.ob-dot.done { background: var(--ok); }
+.ob-body { min-height: 220px; text-align: center; }
+.ob-body h2 { margin: 6px 0 8px; }
+.ob-body .muted { text-align: center; }
+.ob-body .btn { margin-top: 14px; }
+.ob-hero {
+  font-size: 46px; width: 84px; height: 84px; margin: 4px auto 6px;
+  display: grid; place-items: center; border-radius: 22px;
+  background: linear-gradient(145deg, var(--accent), #8a5bff); box-shadow: var(--shadow);
+}
+.ob-checks { display: flex; flex-direction: column; gap: 8px; text-align: left; margin: 14px 0; }
+.ob-check {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px;
+  border-radius: 10px; background: var(--bg); border: 1px solid var(--border); font-size: 13px;
+}
+.ob-check .obc-i {
+  flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid;
+  place-items: center; font-weight: 700; font-size: 12px; color: #fff;
+}
+.ob-ok  .obc-i { background: var(--ok); }
+.ob-warn .obc-i { background: #f0b429; }
+.ob-bad .obc-i { background: var(--danger); }
+.ob-clap { display: flex; margin: 14px auto 0; }
+.ob-listen.on { background: var(--ok); border-color: var(--ok); }
+.ob-listen.on:hover { background: var(--ok); }
+.ob-result { margin-top: 12px; min-height: 18px; font-size: 13px; }
+.ob-foot { display: flex; justify-content: space-between; align-items: center;
+  padding-top: 8px; border-top: 1px solid var(--border); }
+.ob-foot-right { display: flex; gap: 8px; }
+
 @media (max-width: 520px) {
   .grid2 { grid-template-columns: 1fr; }
   .wp-grid { grid-template-columns: repeat(2, 1fr); }

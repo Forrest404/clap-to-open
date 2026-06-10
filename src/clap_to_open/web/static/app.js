@@ -605,6 +605,143 @@ async function init() {
 
   await pollStatus();
   setInterval(pollStatus, 2000);
+
+  await maybeOnboard();
+}
+
+/* ====================== First-run onboarding wizard ====================== */
+async function obWelcome(body) {
+  body.innerHTML = `
+    <div class="ob-hero">👏</div>
+    <h2>Welcome to Clap to Open</h2>
+    <p class="muted">Clap into your mic and your whole workspace springs to life —
+      every app relaunched and snapped to the right size and monitor.
+      Let's set it up in about a minute.</p>`;
+  return { nextLabel: "Let's go" };
+}
+
+async function obCheck(body) {
+  body.innerHTML = `
+    <h2>Quick system check</h2>
+    <p class="muted">Making sure everything Clap to Open needs is in place.</p>
+    <div class="ob-checks" id="obChecks">Checking…</div>
+    <button class="btn ghost" id="obRecheck">Re-check</button>`;
+  const render = async () => {
+    const checks = await api("GET", "/api/doctor");
+    const icon = { ok: "✓", warn: "!", bad: "✕" };
+    $("obChecks").innerHTML = checks.map((c) =>
+      `<div class="ob-check ob-${c.status}"><span class="obc-i">${icon[c.status]}</span>` +
+      `<span><b>${escapeHtml(c.label)}</b>` +
+      (c.hint ? `<br><span class="muted">${escapeHtml(c.hint)}</span>` : "") +
+      `</span></div>`).join("");
+  };
+  await render();
+  $("obRecheck").addEventListener("click", render);
+  return {};
+}
+
+async function obCapture(body) {
+  body.innerHTML = `
+    <h2>Capture your workspace</h2>
+    <p class="muted">Open and arrange the apps you want — drag them to the right
+      monitors and size them how you like. Then capture the layout. You can
+      fine-tune it any time in the editor.</p>
+    <button class="btn" id="obCaptureBtn">⛶ Capture current windows</button>
+    <p class="ob-result" id="obCapResult"></p>`;
+  $("obCaptureBtn").addEventListener("click", async () => {
+    const res = await api("POST", "/api/layout/capture");
+    if (res.count) {
+      LZ.monitors = res.monitors || LZ.monitors;
+      LZ.windows = (res.windows || []).map(normalizeWin);
+      renderAll();
+      $("obCapResult").textContent = `✓ Saved ${res.count} window${res.count > 1 ? "s" : ""}.`;
+    } else {
+      $("obCapResult").textContent = "No windows found — open some apps and try again.";
+    }
+  });
+  return {};
+}
+
+async function obListen(body) {
+  const cc = cfg.trigger.clap_count;
+  body.innerHTML = `
+    <h2>Turn on listening</h2>
+    <p class="muted">Pick your trigger, switch listening on, then clap to test —
+      your saved layout will spring open.</p>
+    <div class="segmented ob-clap" id="obClap">
+      <button data-val="2" class="seg ${cc === 2 ? "active" : ""}">Double clap</button>
+      <button data-val="3" class="seg ${cc === 3 ? "active" : ""}">Triple clap</button>
+    </div>
+    <button class="btn ob-listen" id="obListenBtn">Turn on listening</button>
+    <button class="btn ghost" id="obTestBoot">▶ Preview without clapping</button>
+    <p class="ob-result muted" id="obListenResult"></p>`;
+  const refresh = async () => {
+    const st = await api("GET", "/api/status");
+    const b = $("obListenBtn");
+    b.textContent = st.listening ? "● Listening — clap to test!" : "Turn on listening";
+    b.classList.toggle("on", st.listening);
+  };
+  await refresh();
+  setupSegmented("obClap", async (v) => {
+    cfg.trigger.clap_count = parseInt(v, 10);
+    await api("POST", "/api/config", cfg);
+    markSegmented("clapCount", cfg.trigger.clap_count);
+  });
+  $("obListenBtn").addEventListener("click", async () => {
+    const st = await api("GET", "/api/status");
+    await api("POST", "/api/listening", { on: !st.listening });
+    await refresh();
+  });
+  $("obTestBoot").addEventListener("click", async () => {
+    await api("POST", "/api/test-boot");
+    toast("Replaying your layout…");
+  });
+  return { nextLabel: "Finish" };
+}
+
+const OB_STEPS = [obWelcome, obCheck, obCapture, obListen];
+let obStep = 0;
+let obMeta = {};
+
+function obRenderDots() {
+  $("obDots").innerHTML = OB_STEPS.map((_, i) =>
+    `<span class="ob-dot${i === obStep ? " active" : ""}${i < obStep ? " done" : ""}"></span>`
+  ).join("");
+}
+async function obRender() {
+  obRenderDots();
+  obMeta = (await OB_STEPS[obStep]($("obBody"))) || {};
+  $("obBack").hidden = obStep === 0;
+  $("obNext").textContent = obMeta.nextLabel ||
+    (obStep === OB_STEPS.length - 1 ? "Finish" : "Next");
+}
+async function obFinish() {
+  await api("POST", "/api/onboarded", { done: true });
+  $("onboard").hidden = true;
+  cfg = await api("GET", "/api/config");
+  applyConfig();
+  await loadLayout();
+  await pollStatus();
+  toast("You're all set — clap away! 👏");
+}
+$("obNext").addEventListener("click", async () => {
+  if (obStep < OB_STEPS.length - 1) { obStep++; await obRender(); }
+  else { await obFinish(); }
+});
+$("obBack").addEventListener("click", async () => {
+  if (obStep > 0) { obStep--; await obRender(); }
+});
+$("obSkip").addEventListener("click", async () => {
+  await api("POST", "/api/onboarded", { done: true });
+  $("onboard").hidden = true;
+});
+
+async function maybeOnboard() {
+  if (cfg && !cfg.onboarded) {
+    obStep = 0;
+    $("onboard").hidden = false;
+    await obRender();
+  }
 }
 
 init().catch((e) => toast("Error: " + e.message));

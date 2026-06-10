@@ -51,42 +51,53 @@ def _bad(msg):
     print(f"  {_mark('X  ', '31')} {msg}")
 
 
-def run():
+def check():
+    """Return diagnostics as a list of {status: ok|warn|bad, label, hint}.
+
+    Shared by the CLI (``clap doctor``) and the web onboarding wizard.
+    """
     is_win = sys.platform == "win32"
-    print("Clap to Open — diagnostics\n")
-    print(f"  .  Python {sys.version.split()[0]} on {sys.platform}")
+    out = []
+
+    def add(status, label, hint=""):
+        out.append({"status": status, "label": label, "hint": hint})
 
     # --- audio ---
     try:
         import clapDetector  # noqa: F401
-        _ok("clap-detector + PyAudio importable")
+        add("ok", "Clap detector + microphone library installed")
     except Exception as e:
-        _bad(f"clap-detector/PyAudio not importable ({e}) — reinstall: pip install -e .")
+        add("bad", "clap-detector / PyAudio not importable",
+            f"{e} — reinstall with the install script")
     try:
         import pyaudio
         with _silence_stderr():
             pa = pyaudio.PyAudio()
         try:
             name = pa.get_default_input_device_info().get("name", "?")
-            _ok(f"default microphone: {name}")
+            add("ok", f"Microphone detected: {name}")
         except Exception:
-            _warn("no default input device — plug in / enable a microphone")
+            add("warn", "No default microphone", "Plug in or enable a mic")
         finally:
             pa.terminate()
     except Exception:
-        pass  # already reported above
+        pass
 
     # --- platform specifics ---
     if is_win:
         for mod in ("win32gui", "psutil"):
             try:
                 __import__(mod)
-                _ok(f"{mod} available")
+                add("ok", f"{mod} available")
             except Exception:
-                _bad(f"{mod} missing — run scripts\\install.ps1")
+                add("bad", f"{mod} missing", "Re-run scripts\\install.ps1")
     else:
         sess = os.environ.get("XDG_SESSION_TYPE", "unknown")
-        (_ok if sess == "wayland" else _warn)(f"session type: {sess}")
+        if sess == "wayland":
+            add("ok", "Wayland session")
+        else:
+            add("warn", f"Session type: {sess}",
+                "Window placement is tuned for GNOME on Wayland")
         if shutil.which("gnome-extensions"):
             def _ext_list(*flags):
                 try:
@@ -95,49 +106,56 @@ def run():
                 except Exception:
                     return ""
             if "window-calls" in _ext_list("--enabled"):
-                _ok("GNOME window-calls extension installed & enabled")
+                add("ok", "GNOME window-calls extension enabled")
             elif "window-calls" in _ext_list():
-                _warn("window-calls installed but not enabled — "
-                      "run: gnome-extensions enable window-calls@domandoman.xyz")
+                add("warn", "window-calls extension installed but disabled",
+                    "Run: gnome-extensions enable window-calls@domandoman.xyz")
             else:
-                _bad("GNOME window-calls extension MISSING — install it: "
-                     "https://extensions.gnome.org/extension/4724/window-calls/")
+                add("bad", "GNOME window-calls extension is required but missing",
+                    "Install it from extensions.gnome.org/extension/4724/window-calls/")
         else:
-            _warn("gnome-extensions not found — this tool targets GNOME")
+            add("warn", "gnome-extensions not found",
+                "This tool targets GNOME — window placement needs window-calls")
         if shutil.which("paplay") or shutil.which("ffplay"):
-            _ok("sound player present (paplay/ffplay)")
+            add("ok", "Sound player present")
         else:
-            _warn("no paplay/ffplay — the local startup sound won't play")
+            add("warn", "No paplay/ffplay", "The startup sound won't play")
 
-    # --- window backend / monitors ---
+    # --- monitors ---
     try:
         mons = platforms.list_monitors()
-        (_ok if mons else _warn)(f"monitors detected: {len(mons)}")
+        add("ok" if mons else "warn", f"{len(mons)} monitor(s) detected")
     except Exception as e:
-        _bad(f"could not read monitors: {e}")
+        add("bad", "Could not read monitors", str(e))
 
-    # --- config / layout ---
-    if os.path.exists(paths.CONFIG_PATH):
-        _ok(f"config: {paths.CONFIG_PATH}")
-    else:
-        _warn("no config yet (created on first run)")
+    # --- saved layout ---
+    n = 0
     if os.path.exists(paths.LAYOUT_PATH):
         try:
             with open(paths.LAYOUT_PATH) as f:
                 n = len(json.load(f))
-            (_ok if n else _warn)(f"saved layout: {n} window(s)")
         except Exception:
-            _warn("layout.json is unreadable")
+            n = 0
+    if n:
+        add("ok", f"Saved layout: {n} window(s)")
     else:
-        _warn("no layout captured yet — open the panel and capture one")
+        add("warn", "No layout captured yet", "Capture one in the next step")
 
-    # --- listener ---
+    return out
+
+
+def run():
+    print("Clap to Open — diagnostics\n")
+    print(f"  .  Python {sys.version.split()[0]} on {sys.platform}")
+    fn = {"ok": _ok, "warn": _warn, "bad": _bad}
+    for c in check():
+        msg = c["label"] + (f" — {c['hint']}" if c["hint"] else "")
+        fn[c["status"]](msg)
     try:
         st = platforms.svc_status()
         _ok(f"listener: {'on' if st['listening'] else 'off'} | "
             f"autostart: {'on' if st['autostart'] else 'off'}")
-    except Exception as e:
-        _warn(f"could not query listener: {e}")
-
+    except Exception:
+        pass
     print(f"\nLegend: {_mark('OK', '32')} good   "
           f"{_mark('!', '33')} optional/heads-up   {_mark('X', '31')} must fix")

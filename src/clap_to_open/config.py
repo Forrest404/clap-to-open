@@ -35,6 +35,8 @@ DEFAULTS = {
         # to spin up a docker stack a saved app depends on. Empty = do nothing.
         "pre_launch_command": "",
     },
+    # Set true once the user finishes (or skips) the first-run onboarding wizard.
+    "onboarded": False,
 }
 
 
@@ -96,6 +98,9 @@ def ensure_exists():
 def reset():
     """Restore all settings to defaults and return the fresh config.
 
-    The toggle hotkey lives in GNOME settings (not here), so it is unaffected.
+    The toggle hotkey lives in GNOME settings (not here) and the onboarding flag
+    isn't a "setting", so both are preserved across a reset.
     """
-    return save(DEFAULTS)
+    fresh = copy.deepcopy(DEFAULTS)
+    fresh["onboarded"] = load().get("onboarded", False)
+    return save(fresh)

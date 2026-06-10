@@ -6,8 +6,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- **First-run onboarding wizard** in the control panel: welcome → live system
+  check → capture your layout → turn on listening & test. Shown once, skippable.
 - `clap doctor` — diagnoses the local setup (mic, GNOME extension, sound player,
-  Win32 deps, monitors, listener) and says what to fix.
+  Win32 deps, monitors, listener) and says what to fix. The same checks power
+  the onboarding system-check step (`GET /api/doctor`).
 - Contributor docs: CONTRIBUTING, CHANGELOG, SECURITY, Code of Conduct, and
   issue/PR templates.
 - README **Privacy** section (audio is processed locally, never recorded/uploaded).
