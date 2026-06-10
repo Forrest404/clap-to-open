@@ -103,6 +103,12 @@ clap serve        # open the control panel at http://localhost:7333
 
 (If `clap` isn’t on your PATH, use `./venv/bin/clap` or add `./venv/bin` to PATH.)
 
+On first launch a **setup wizard** walks you through it: a live system check →
+capture your layout → turn on listening and clap to test. That's it. (You can
+re-run the checks any time with `clap doctor`.)
+
+Doing it by hand instead:
+
 1. Arrange your windows exactly how you like them.
 2. In the panel, hit **Capture current layout**.
 3. Tune sensitivity and pick double- or triple-clap.
@@ -110,6 +116,7 @@ clap serve        # open the control panel at http://localhost:7333
 
 ## Features
 
+- 🧭 **First-run onboarding wizard** — guided setup with a live system check.
 - 🎛️ **Web control panel** — tune everything in the browser, nothing hardcoded.
 - 🔊 **Listening + start-on-login** toggles with a live status indicator.
 - ⌨️ **Custom global shortcut** — set your own hotkey to toggle listening.
