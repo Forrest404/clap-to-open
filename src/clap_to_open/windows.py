@@ -6,6 +6,7 @@ coordinates. Both :mod:`clap_to_open.save` (capture) and
 :mod:`clap_to_open.boot` (replay) use these helpers, so they live in one place.
 """
 import json
+import os
 import shlex
 import subprocess
 import time
@@ -61,11 +62,23 @@ def cmdline(pid):
         return None
     # Chromium-based apps (Brave/Cursor helper) rewrite their cmdline into a
     # single space-joined blob with no null separators. Re-split it so the saved
-    # argv is actually executable instead of one path-with-spaces.
-    if len(argv) == 1 and " " in argv[0]:
+    # argv is executable — but ONLY if the blob isn't itself a real file, so we
+    # don't shatter an exe path that legitimately contains a space (e.g.
+    # "/opt/Mullvad VPN/mullvad-gui").
+    if len(argv) == 1 and " " in argv[0] and not os.path.exists(argv[0]):
         try:
             argv = shlex.split(argv[0])
         except ValueError:
+            pass
+    # Resolve a relative program path (e.g. "./blender") against the process's
+    # working directory so it can be relaunched from anywhere.
+    if argv and not os.path.isabs(argv[0]) and "/" in argv[0]:
+        try:
+            cwd = os.readlink(f"/proc/{pid}/cwd")
+            cand = os.path.normpath(os.path.join(cwd, argv[0]))
+            if os.path.exists(cand):
+                argv[0] = cand
+        except OSError:
             pass
     return argv
 

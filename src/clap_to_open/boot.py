@@ -40,17 +40,20 @@ def main():
     sound.play(cfg)
 
     # Launch every saved window. A bad/unrunnable command (e.g. a sandbox-only
-    # Flatpak path) is skipped so it doesn't abort the rest of the boot.
+    # Flatpak path) is skipped so it doesn't abort the rest of the boot — and
+    # we don't then waste time waiting for a window it could never have opened.
+    launched = []
     for entry in layout:
         try:
             platforms.launch(entry["argv"])
+            launched.append(entry)
         except OSError as e:
             print(f"clap-to-open: could not launch {entry.get('wm_class')}: {e}",
                   flush=True)
 
-    # Place each window as it appears.
+    # Place each successfully-launched window as it appears.
     placed = set()
-    for entry in layout:
+    for entry in launched:
         platforms.place(entry, placed)
 
 
