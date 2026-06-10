@@ -328,8 +328,8 @@ def svc_start():
     # DETACHED_PROCESS | CREATE_NO_WINDOW so the listener runs headless.
     flags = 0x00000008 | 0x08000000
     p = subprocess.Popen(
-        [paths.VENV_PYTHON, "-m", "clap_to_open.listener"],
-        cwd=paths.PROJECT_ROOT, creationflags=flags, close_fds=True)
+        [paths.background_python(), "-m", "clap_to_open.listener"],
+        cwd=paths.CONFIG_DIR, creationflags=flags, close_fds=True)
     with open(paths.PID_FILE, "w") as f:
         f.write(str(p.pid))
 
@@ -388,8 +388,8 @@ def svc_is_enabled():
 def svc_set_autostart(on):
     if on:
         os.makedirs(_startup_dir(), exist_ok=True)
-        _make_shortcut(_listener_lnk(), paths.VENV_PYTHON,
-                       "-m clap_to_open.listener", paths.PROJECT_ROOT)
+        _make_shortcut(_listener_lnk(), paths.background_python(),
+                       "-m clap_to_open.listener", paths.CONFIG_DIR)
     else:
         try:
             os.remove(_listener_lnk())
@@ -437,8 +437,8 @@ def _agent_restart():
     # agent self-guards against double-registration via the accel in config.
     flags = 0x00000008 | 0x08000000
     try:
-        subprocess.Popen([paths.VENV_PYTHON, "-m", "clap_to_open.hotkey_agent"],
-                         cwd=paths.PROJECT_ROOT, creationflags=flags, close_fds=True)
+        subprocess.Popen([paths.background_python(), "-m", "clap_to_open.hotkey_agent"],
+                         cwd=paths.CONFIG_DIR, creationflags=flags, close_fds=True)
     except Exception:
         pass
 
@@ -455,8 +455,8 @@ def hk_set_binding(accel):
     cfg.setdefault("hotkey", {})["accel"] = accel
     config.save(cfg)
     os.makedirs(_startup_dir(), exist_ok=True)
-    _make_shortcut(_hotkey_lnk(), paths.VENV_PYTHON,
-                   "-m clap_to_open.hotkey_agent", paths.PROJECT_ROOT)
+    _make_shortcut(_hotkey_lnk(), paths.background_python(),
+                   "-m clap_to_open.hotkey_agent", paths.CONFIG_DIR)
     _agent_restart()
     return {"ok": True, "binding": accel, "available": True}
 

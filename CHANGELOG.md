@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Changed
+- **Installable via `pipx`/PyPI.** User data now lives in a standard per-user
+  directory (`~/.config/clap-to-open`, `%APPDATA%\clap-to-open`) instead of beside
+  the source; an existing in-repo config/layout is migrated automatically on
+  first run. Startup sounds are bundled inside the package, and the listener /
+  systemd unit now use the running interpreter (`sys.executable`) so it works
+  from a pipx venv. On Linux, `pipx install --system-site-packages` exposes
+  PyGObject for the monitor map & app picker.
+
 ### Added
 - **First-run onboarding wizard** in the control panel: welcome → live system
   check → capture your layout → turn on listening & test. Shown once, skippable.

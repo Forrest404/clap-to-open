@@ -120,6 +120,13 @@ def check():
             add("ok", "Sound player present")
         else:
             add("warn", "No paplay/ffplay", "The startup sound won't play")
+        try:
+            import gi  # noqa: F401
+            add("ok", "PyGObject available (monitor map + app picker)")
+        except Exception:
+            add("warn", "PyGObject (gi) not available",
+                "The monitor map & app picker need it — reinstall with: "
+                "pipx install --system-site-packages clap-to-open")
 
     # --- monitors ---
     try:

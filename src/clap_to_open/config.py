@@ -7,8 +7,9 @@ or partial config never crashes a newer build.
 import copy
 import json
 import os
+import shutil
 
-from . import paths, platforms
+from . import paths
 
 DEFAULTS = {
     "version": 1,
@@ -26,8 +27,9 @@ DEFAULTS = {
     },
     "sound": {
         "mode": "file",         # "file" | "url" | "off"
-        # Platform default: boot.ogg on Linux (paplay), boot.wav on Windows (mci).
-        "file": "data/sounds/" + platforms.DEFAULT_SOUND_FILENAME,
+        # Empty = the bundled default chime (boot.ogg on Linux / boot.wav on
+        # Windows, shipped inside the package). A non-empty path overrides it.
+        "file": "",
         "url": "",
     },
     "boot": {
@@ -88,10 +90,31 @@ def save(cfg):
     return cfg
 
 
+def _migrate_legacy():
+    """One-time: copy config/layout from the old in-repo location to the user dir.
+
+    Earlier versions kept config.json/layout.json beside the source. When a
+    cloned-repo install upgrades to the user-dir layout, bring those along so the
+    user keeps their settings and captured layout.
+    """
+    paths.ensure_dirs()
+    for src, dst in ((paths.LEGACY_CONFIG, paths.CONFIG_PATH),
+                     (paths.LEGACY_LAYOUT, paths.LAYOUT_PATH)):
+        try:
+            if os.path.exists(src) and os.path.abspath(src) != os.path.abspath(dst):
+                shutil.copy2(src, dst)
+        except OSError:
+            pass
+
+
 def ensure_exists():
-    """Seed ``config.json`` from defaults on first run if it's missing."""
+    """Seed ``config.json`` on first run (migrating a legacy repo config first)."""
+    paths.ensure_dirs()
     if not os.path.exists(paths.CONFIG_PATH):
-        save(DEFAULTS)
+        if os.path.exists(paths.LEGACY_CONFIG):
+            _migrate_legacy()
+        else:
+            save(DEFAULTS)
     return load()
 
 

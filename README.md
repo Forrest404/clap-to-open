@@ -39,6 +39,22 @@ adds a *Clap to Open* application launcher. It’s safe to re-run.
 > you don’t have it, the installer points you to it — it’s a one-click install
 > from [extensions.gnome.org](https://extensions.gnome.org/extension/4724/window-calls/).
 
+### With pipx (no clone)
+
+Once it's on PyPI, the lowest-friction install is [pipx](https://pipx.pypa.io):
+
+```bash
+# Windows / macOS:
+pipx install clap-to-open
+
+# Linux (GNOME): add system site-packages so it can use PyGObject for the
+# monitor map and app picker:
+pipx install --system-site-packages clap-to-open
+```
+
+Then `clap serve`. On Linux you still need the GNOME **window-calls** extension
+(see below); run `clap doctor` to check everything at once.
+
 ### Windows 10 / 11
 
 In PowerShell:

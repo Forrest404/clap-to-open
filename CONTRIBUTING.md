@@ -33,6 +33,18 @@ venv/bin/python tests/smoke.py
 - Run `python tests/smoke.py` and add a test for pure logic where you can.
 - Note in your PR which OS/desktop you tested on.
 
+## Releasing (maintainers)
+
+```bash
+python -m build                 # builds sdist + wheel into dist/
+twine check dist/*              # validate metadata
+twine upload dist/*             # publish to PyPI (needs a PyPI token)
+gh release create vX.Y.Z --notes "…"
+```
+
+User data lives in `~/.config/clap-to-open` (not the repo), and sounds ship in
+`clap_to_open/assets/`, so a wheel install is fully self-sufficient.
+
 ## Good first issues
 
 Check the [`good first issue`](https://github.com/Forrest404/clap-to-open/labels/good%20first%20issue)

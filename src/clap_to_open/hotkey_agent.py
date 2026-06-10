@@ -40,8 +40,8 @@ def main():
         while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
             if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
                 subprocess.Popen(
-                    [paths.VENV_PYTHON, "-m", "clap_to_open.cli", "ctl", "toggle"],
-                    cwd=paths.PROJECT_ROOT)
+                    [paths.background_python(), "-m", "clap_to_open.cli", "ctl", "toggle"],
+                    cwd=paths.CONFIG_DIR)
             user32.TranslateMessage(ctypes.byref(msg))
             user32.DispatchMessageW(ctypes.byref(msg))
     finally:

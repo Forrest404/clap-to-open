@@ -10,18 +10,19 @@ bindings. On non-GNOME systems these calls simply no-op and the API reports the
 feature as unavailable.
 """
 import ast
-import os
 import shutil
 import subprocess
-
-from . import paths
+import sys
 
 _SCHEMA = "org.gnome.settings-daemon.plugins.media-keys"
 _CUSTOM = _SCHEMA + ".custom-keybinding"
 _SLUG = "clap-to-open"
 _PATH = ("/org/gnome/settings-daemon/plugins/media-keys/"
          f"custom-keybindings/{_SLUG}/")
-_COMMAND = os.path.join(paths.PROJECT_ROOT, "venv", "bin", "clap") + " ctl toggle"
+# Prefer the installed `clap` launcher; fall back to the running interpreter so
+# it works under pipx, a repo venv, or anything else.
+_COMMAND = (f"{shutil.which('clap')} ctl toggle" if shutil.which("clap")
+            else f"{sys.executable} -m clap_to_open.cli ctl toggle")
 
 # The legacy binding the old standalone script created; migrated away on setup.
 _LEGACY_PATH = ("/org/gnome/settings-daemon/plugins/media-keys/"

@@ -43,4 +43,4 @@ clap = "clap_to_open.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-clap_to_open = ["web/templates/*.html", "web/static/*"]
+clap_to_open = ["web/templates/*.html", "web/static/*", "assets/sounds/*"]

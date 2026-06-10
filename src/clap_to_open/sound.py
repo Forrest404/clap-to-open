@@ -73,11 +73,14 @@ def play(cfg):
     Imported lazily to avoid an import cycle (the platform backend delegates
     file/url playback back into this module's ``_play_file``/``_play_url``).
     """
-    from . import platforms
+    from . import paths, platforms
     snd = cfg.get("sound", {})
     mode = snd.get("mode", "off")
     if mode == "file":
-        platforms.play_file(snd.get("file"))
+        # Empty file = the bundled default chime shipped inside the package.
+        f = (snd.get("file") or "").strip()
+        f = paths.resolve(f) if f else paths.bundled_sound(platforms.DEFAULT_SOUND_FILENAME)
+        platforms.play_file(f)
     elif mode == "url":
         platforms.play_url(snd.get("url"))
     # mode == "off": do nothing

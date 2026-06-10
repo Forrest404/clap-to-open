@@ -62,36 +62,19 @@ if ! "$VENV/bin/pip" install -e "$PROJECT"; then
   fi
 fi
 
-# ---- 3. Default startup sound -----------------------------------------------
-SOUND="$PROJECT/data/sounds/boot.ogg"
-if [ ! -f "$SOUND" ]; then
-  for cand in /usr/share/sounds/freedesktop/stereo/complete.oga \
-              /usr/share/sounds/freedesktop/stereo/bell.oga; do
-    [ -f "$cand" ] && { cp "$cand" "$SOUND"; say "Seeded default sound from $cand"; break; }
-  done
-fi
+# Startup sounds ship inside the package; config/layout live in ~/.config/clap-to-open
+# (migrated automatically on first run). The systemd unit is generated on demand
+# by the app the first time you turn listening on — nothing to template here.
 
-# ---- 4. Migrate a layout.json from the legacy location, if any --------------
-OLD_LAYOUT="$HOME/.local/share/clap-trigger/layout.json"
-if [ -f "$OLD_LAYOUT" ] && [ ! -f "$PROJECT/layout.json" ]; then
-  cp "$OLD_LAYOUT" "$PROJECT/layout.json"; say "Migrated existing layout.json"
-fi
-
-# ---- 5. systemd user service -------------------------------------------------
-mkdir -p "$SYSTEMD_DIR"
-sed "s#@PROJECT@#$PROJECT#g" "$PROJECT/systemd/clap-to-open.service.in" > "$SYSTEMD_DIR/$SERVICE"
-systemctl --user daemon-reload 2>/dev/null || warn "systemctl --user unavailable (no graphical session?)"
-say "Installed $SERVICE (not started — turn it on from the UI or 'clap ctl on')"
-
-# ---- 6. Desktop launcher -----------------------------------------------------
+# ---- 3. Desktop launcher -----------------------------------------------------
 mkdir -p "$APPS_DIR"
 sed "s#@PROJECT@#$PROJECT#g" "$PROJECT/data/clap-to-open.desktop.in" > "$APPS_DIR/clap-to-open.desktop"
 say "Installed 'Clap to Open' app launcher"
 
-# ---- 7. Seed config.json -----------------------------------------------------
+# ---- 4. Seed config.json (and migrate any legacy config) --------------------
 "$VENV/bin/clap" ctl status >/dev/null 2>&1 || true
 
-# ---- 8. Environment sanity checks (warnings only) ---------------------------
+# ---- 5. Environment sanity checks (warnings only) ---------------------------
 echo
 [ "${XDG_SESSION_TYPE:-}" = "wayland" ] || warn "Not a Wayland session — window placement uses GNOME window-calls and is tuned for Wayland."
 if command -v gnome-extensions >/dev/null; then
