@@ -22,6 +22,7 @@ else:
 _NAMES = [
     "DEFAULT_SOUND_FILENAME",
     "win_list", "window_details", "window_cmdline", "place", "reassert_geometry",
+    "settle_geometry",
     "list_monitors", "list_apps",
     "launch", "run_pre_launch",
     "play_file", "play_url",

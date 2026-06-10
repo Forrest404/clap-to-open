@@ -176,6 +176,50 @@ def assert_geometry(wid, entry, tries=6, delay=0.25):
     return _geometry_ok(wid, entry)
 
 
+def settle_geometry(items, total_timeout=8.0, interval=0.4):
+    """Keep re-applying saved geometry to ``(entry, wid)`` pairs until each sticks.
+
+    A single MoveResize loses a race that's common on multi-monitor setups: the
+    WM spawns every window on the *primary* monitor, and Electron/GTK apps run
+    their own restore/placement a second or three after mapping. When the saved
+    spot is on a *non-primary* monitor, the app keeps yanking the window back to
+    the primary and a brief one-shot reassert gives up before the app is done.
+
+    So we poll: every ``interval`` seconds re-issue MoveResize for any window not
+    yet at its saved rect, and only stop once every window has held its spot for
+    two consecutive rounds (stable) or ``total_timeout`` elapses. Already-correct
+    windows are left alone but still watched, so one that drifts late is caught.
+    """
+    items = [(e, w) for e, w in items if w is not None]
+    deadline = time.time() + total_timeout
+    stable_rounds = 0
+    while items and time.time() < deadline:
+        all_ok = True
+        for entry, wid in items:
+            if entry.get("maximized"):
+                d = wc_json("Details", wid) or {}
+                if not (d.get("maximized_horizontally")
+                        and d.get("maximized_vertically")):
+                    wc("Maximize", wid)
+                    all_ok = False
+                continue
+            if _geometry_ok(wid, entry):
+                continue
+            all_ok = False
+            d = wc_json("Details", wid) or {}
+            if d.get("maximized_horizontally") or d.get("maximized_vertically"):
+                wc("Unmaximize", wid)
+            wc("MoveResize", wid, entry["x"], entry["y"],
+               entry["width"], entry["height"])
+        if all_ok:
+            stable_rounds += 1
+            if stable_rounds >= 2:
+                return
+        else:
+            stable_rounds = 0
+        time.sleep(interval)
+
+
 def place(entry, placed, timeout=12, pid=None):
     """Wait for an unplaced window matching ``entry``'s wm_class, then position it.
 

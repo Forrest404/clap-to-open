@@ -12,7 +12,6 @@ Notes / limitations:
   * Flatpak/wrapped apps may record a cmdline that doesn't replay verbatim.
 """
 import json
-import time
 
 from . import config, launchspec, paths, platforms, sound
 
@@ -69,13 +68,14 @@ def main():
         if wid is not None:
             matched.append((entry, wid))
 
-    # Some apps finish their own window layout a second or two after we first
-    # placed them, drifting off the saved spot. Re-assert once more after a short
-    # settle. Bounded and best-effort so a slow app can't stall the boot.
+    # Many apps finish their own window layout a second or several after we first
+    # placed them, drifting off the saved spot — most visibly when the target is
+    # a non-primary monitor, which the WM and the app both keep pulling the window
+    # away from. A single reassert loses that race, so keep reasserting on a short
+    # poll until every window holds its saved rect. Bounded so a slow app can't
+    # stall the boot indefinitely.
     if matched:
-        time.sleep(1.5)
-        for entry, wid in matched:
-            platforms.reassert_geometry(entry, wid)
+        platforms.settle_geometry(matched)
 
 
 if __name__ == "__main__":

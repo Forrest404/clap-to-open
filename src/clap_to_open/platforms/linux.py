@@ -47,6 +47,11 @@ def reassert_geometry(entry, win_id):
     return _windows.assert_geometry(win_id, entry)
 
 
+def settle_geometry(items, total_timeout=8.0, interval=0.4):
+    """Persistently re-apply saved geometry to (entry, win_id) pairs."""
+    return _windows.settle_geometry(items, total_timeout, interval)
+
+
 # --- monitors / apps ---
 def list_monitors():
     return _monitors.list_monitors()

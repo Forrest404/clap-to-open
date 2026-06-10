@@ -29,6 +29,10 @@ def reassert_geometry(entry, win_id):
     return None
 
 
+def settle_geometry(items, total_timeout=8.0, interval=0.4):
+    return None
+
+
 def list_monitors():
     return []
 
