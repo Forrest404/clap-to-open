@@ -34,6 +34,23 @@ APP_DATA_DIR = CONFIG_DIR  # back-compat alias
 
 SERVICE_NAME = "clap-to-open.service"
 
+# Web control panel. The default port and a file recording the port the panel is
+# actually serving on, so capture/boot can recognise (and skip) the panel's own
+# browser window regardless of the port `clap serve` was started with.
+DEFAULT_SERVE_PORT = 7333
+SERVE_PORT_FILE = os.path.join(CONFIG_DIR, "serve.port")
+
+
+def control_panel_ports():
+    """Ports whose ``localhost`` windows are the Clap to Open control panel."""
+    ports = {DEFAULT_SERVE_PORT}
+    try:
+        with open(SERVE_PORT_FILE) as f:
+            ports.add(int(f.read().strip()))
+    except (OSError, ValueError):
+        pass
+    return ports
+
 # Legacy self-contained location (config beside the source), for one-time
 # migration when upgrading a cloned-repo install to the user-dir layout.
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

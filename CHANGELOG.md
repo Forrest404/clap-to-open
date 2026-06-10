@@ -11,10 +11,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
   for the terminal (ptyxis/gnome-terminal `--`, konsole/xterm `-e`, kitty, …).
 
 ### Fixed
+- **Some windows silently didn't reopen on boot.** Two causes, both fixed:
+  - *Flatpak apps* (Brave, Spotify, Blender, Bambu Studio, …) were captured with
+    a sandbox-internal path (`/app/...`) that doesn't exist on the host, so the
+    relaunch failed. Capture now records `flatpak run <app-id>` (detected via
+    `/proc` and the app's `.desktop` Exec, reusing the app picker's resolution).
+  - *Single-instance apps* (Ptyxis, Cursor/VS Code, Chromium browsers) just
+    re-focused their existing instance, so a second saved window never opened.
+    Boot now injects the right new-window flag, and opens browser windows as a
+    placeable window (`--new-window`, or `--app=<url> --class=<wm_class>` for a
+    PWA/app window) instead of a tab.
 - Window capture: stop splitting an exe path that contains a space (Mullvad),
   resolve relative program paths (`./blender`) via the process cwd, and skip the
   `--gapplication-service` flag that never opens a window.
-- Boot no longer waits on windows whose launch failed.
+- Boot no longer waits on windows whose launch failed, and ties each launched
+  window back to its process so duplicate-class windows (two terminals, two
+  browser windows) land on their own saved geometry.
 
 ## [1.1.0] - 2026-06-10
 ### Changed

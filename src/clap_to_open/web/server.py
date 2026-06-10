@@ -11,7 +11,7 @@ import webbrowser
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from .. import config, doctor, layout, platforms, save, sound
+from .. import config, doctor, layout, paths, platforms, save, sound
 
 app = Flask(
     __name__,
@@ -157,8 +157,14 @@ def api_test_sound():
     return jsonify({"ok": True})
 
 
-def run(port=7333, open_browser=True):
+def run(port=paths.DEFAULT_SERVE_PORT, open_browser=True):
     config.ensure_exists()
+    # Record the live port so capture/boot can skip the panel's own window.
+    try:
+        with open(paths.SERVE_PORT_FILE, "w") as f:
+            f.write(str(port))
+    except OSError:
+        pass
     url = f"http://localhost:{port}/"
     if open_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()

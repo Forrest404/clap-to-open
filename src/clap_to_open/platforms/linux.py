@@ -38,8 +38,13 @@ def window_cmdline(pid):
     return _windows.cmdline(pid)
 
 
-def place(entry, placed, timeout=12):
-    return _windows.place(entry, placed, timeout)
+def place(entry, placed, timeout=12, pid=None):
+    return _windows.place(entry, placed, timeout, pid)
+
+
+def reassert_geometry(entry, win_id):
+    """Re-apply an entry's saved geometry to an already-matched window id."""
+    return _windows.assert_geometry(win_id, entry)
 
 
 # --- monitors / apps ---

@@ -12,35 +12,9 @@ Notes / limitations:
   * Flatpak/wrapped apps may record a cmdline that doesn't replay verbatim.
 """
 import json
-import os
-import shlex
+import time
 
-from . import config, paths, platforms, sound
-
-# How common terminals run a command passed to them. Anything not listed falls
-# back to "-e" (xterm/konsole-style), which most terminals accept.
-_TERMINAL_RUN = {
-    "ptyxis": ["--"], "gnome-terminal": ["--"], "kgx": ["--"],
-    "kitty": [], "foot": [], "wezterm": ["start", "--"],
-    "konsole": ["-e"], "xterm": ["-e"], "uxterm": ["-e"], "alacritty": ["-e"],
-    "tilix": ["-e"], "terminator": ["-x"], "xfce4-terminal": ["-x"],
-    "wt": [], "windows-terminal": [],
-}
-
-
-def _build_argv(entry):
-    """Final launch argv, appending the optional ``run`` command for terminals."""
-    argv = [a for a in (entry.get("argv") or [])
-            if a != "--gapplication-service"]  # service flag never opens a window
-    run = (entry.get("run") or "").strip()
-    if run and argv:
-        term = os.path.splitext(os.path.basename(argv[0]))[0].lower()
-        sep = _TERMINAL_RUN.get(term, ["-e"])
-        try:
-            argv = argv + sep + shlex.split(run)
-        except ValueError:
-            argv = argv + sep + [run]
-    return argv
+from . import config, launchspec, paths, platforms, sound
 
 
 def main():
@@ -66,22 +40,42 @@ def main():
 
     sound.play(cfg)
 
-    # Launch every saved window. A bad/unrunnable command (e.g. a sandbox-only
-    # Flatpak path) is skipped so it doesn't abort the rest of the boot — and
-    # we don't then waste time waiting for a window it could never have opened.
+    # Launch every saved window, then place them. Launching all first lets apps
+    # start in parallel; we remember each spawned PID so placement can tie a
+    # window back to the process that opened it. A launch that fails is logged
+    # and skipped — and, crucially, not waited on — so it can't stall the boot.
+    ports = paths.control_panel_ports()
     launched = []
     for entry in layout:
+        # Never relaunch Clap to Open's own control panel (skips it even in
+        # layouts captured before it was excluded).
+        if launchspec.is_control_panel(entry.get("argv"), ports):
+            continue
+        argv = launchspec.apply_strategy(entry)
+        if not argv:
+            continue
         try:
-            platforms.launch(_build_argv(entry))
-            launched.append(entry)
+            proc = platforms.launch(argv)
+            launched.append((entry, getattr(proc, "pid", None)))
         except OSError as e:
             print(f"clap-to-open: could not launch {entry.get('wm_class')}: {e}",
                   flush=True)
 
     # Place each successfully-launched window as it appears.
     placed = set()
-    for entry in launched:
-        platforms.place(entry, placed)
+    matched = []
+    for entry, pid in launched:
+        wid = platforms.place(entry, placed, pid=pid)
+        if wid is not None:
+            matched.append((entry, wid))
+
+    # Some apps finish their own window layout a second or two after we first
+    # placed them, drifting off the saved spot. Re-assert once more after a short
+    # settle. Bounded and best-effort so a slow app can't stall the boot.
+    if matched:
+        time.sleep(1.5)
+        for entry, wid in matched:
+            platforms.reassert_geometry(entry, wid)
 
 
 if __name__ == "__main__":

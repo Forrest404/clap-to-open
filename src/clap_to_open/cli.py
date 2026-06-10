@@ -9,7 +9,7 @@
 import argparse
 import sys
 
-from . import boot, config, doctor, platforms, save
+from . import boot, config, doctor, paths, platforms, save
 
 
 def _notify(title, body, icon=None):
@@ -59,7 +59,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_serve = sub.add_parser("serve", help="start the web control panel")
-    p_serve.add_argument("--port", type=int, default=7333)
+    p_serve.add_argument("--port", type=int, default=paths.DEFAULT_SERVE_PORT)
     p_serve.add_argument("--no-open", action="store_true",
                          help="don't open a browser window")
     p_serve.set_defaults(func=cmd_serve)

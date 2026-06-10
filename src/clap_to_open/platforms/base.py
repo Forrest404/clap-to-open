@@ -21,8 +21,12 @@ def window_cmdline(pid):
     return None
 
 
-def place(entry, placed, timeout=12):
-    return False
+def place(entry, placed, timeout=12, pid=None):
+    return None
+
+
+def reassert_geometry(entry, win_id):
+    return None
 
 
 def list_monitors():

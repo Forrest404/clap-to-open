@@ -120,35 +120,61 @@ def window_cmdline(pid):
         return None
 
 
-def place(entry, placed, timeout=12):
-    """Match entry's wm_class (exe basename) to an unplaced window and position it."""
+def place(entry, placed, timeout=8, pid=None):
+    """Match entry's wm_class (exe basename) to an unplaced window and position it.
+
+    When ``pid`` (the launched process) is known, prefer the window owned by it
+    so duplicate-class windows land on their own saved geometry.
+    """
     import win32gui
     import win32con
     _ensure_dpi()
     match = (entry.get("wm_class") or "").lower()
     deadline = time.time() + timeout
     while time.time() < deadline:
-        for w in win_list():
-            if w["id"] in placed:
-                continue
-            if match and match == (w.get("wm_class") or "").lower():
-                hwnd = w["id"]
-                placed.add(hwnd)
-                try:
-                    if entry.get("maximized"):
-                        win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
-                    else:
-                        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-                        win32gui.SetWindowPos(
-                            hwnd, 0, int(entry["x"]), int(entry["y"]),
-                            int(entry["width"]), int(entry["height"]),
-                            win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
-                except Exception as e:
-                    print(f"clap-to-open: place failed for {match}: {e}", flush=True)
-                return True
+        cands = [w for w in win_list()
+                 if w["id"] not in placed
+                 and match and match == (w.get("wm_class") or "").lower()]
+        if pid:
+            cands.sort(key=lambda w: 0 if w.get("pid") == pid else 1)
+        for w in cands:
+            hwnd = w["id"]
+            placed.add(hwnd)
+            try:
+                if entry.get("maximized"):
+                    win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+                else:
+                    win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                    win32gui.SetWindowPos(
+                        hwnd, 0, int(entry["x"]), int(entry["y"]),
+                        int(entry["width"]), int(entry["height"]),
+                        win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
+            except Exception as e:
+                print(f"clap-to-open: place failed for {match}: {e}", flush=True)
+            return hwnd
         time.sleep(0.4)
     print(f"clap-to-open: window '{match}' did not appear in {timeout}s", flush=True)
-    return False
+    return None
+
+
+def reassert_geometry(entry, win_id):
+    """Re-apply an entry's saved geometry to an already-matched window handle."""
+    import win32gui
+    import win32con
+    _ensure_dpi()
+    hwnd = int(win_id)
+    try:
+        if entry.get("maximized"):
+            win32gui.ShowWindow(hwnd, win32con.SW_MAXIMIZE)
+        else:
+            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            win32gui.SetWindowPos(
+                hwnd, 0, int(entry["x"]), int(entry["y"]),
+                int(entry["width"]), int(entry["height"]),
+                win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
+    except Exception as e:
+        print(f"clap-to-open: re-place failed for "
+              f"{entry.get('wm_class')}: {e}", flush=True)
 
 
 # ------------------------------------------------------------------- monitors

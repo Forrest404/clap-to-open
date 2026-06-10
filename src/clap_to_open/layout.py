@@ -27,7 +27,7 @@ def to_api(entries):
     out = []
     for i, e in enumerate(entries):
         argv = e.get("argv") or []
-        out.append({
+        item = {
             "id": str(i),
             "wm_class": e.get("wm_class") or "",
             "title": e.get("title") or "",
@@ -40,7 +40,12 @@ def to_api(entries):
             "height": e.get("height") or 0,
             "monitor": e.get("monitor") or 0,
             "maximized": bool(e.get("maximized")),
-        })
+        }
+        # Carry the resolved replay fields so they survive an editor round-trip.
+        for k in ("launch", "app_id", "desktop_id"):
+            if e.get(k):
+                item[k] = e[k]
+        out.append(item)
     return out
 
 
@@ -66,6 +71,7 @@ def clean(windows, monitor_count=None):
 
         # The editor's command string is authoritative when present (the user
         # may have edited it); fall back to a raw argv list otherwise.
+        orig_argv = w.get("argv") if isinstance(w.get("argv"), list) else None
         cmd = (w.get("command") or "").strip()
         if cmd:
             try:
@@ -73,7 +79,7 @@ def clean(windows, monitor_count=None):
             except ValueError:
                 raise ValueError(f"window {n}: could not parse command")
         else:
-            argv = w.get("argv")
+            argv = orig_argv
         if (not isinstance(argv, list) or not argv
                 or not all(isinstance(a, str) and a for a in argv)):
             raise ValueError(f"window {n}: argv/command is required")
@@ -88,7 +94,7 @@ def clean(windows, monitor_count=None):
         if monitor_count and not (0 <= monitor < monitor_count):
             monitor = max(0, min(monitor, monitor_count - 1))
 
-        cleaned.append({
+        entry = {
             "wm_class": (w.get("wm_class") or "").strip(),
             "title": w.get("title") or "",
             "argv": argv,
@@ -99,5 +105,13 @@ def clean(windows, monitor_count=None):
             "height": height,
             "monitor": monitor,
             "maximized": maximized,
-        })
+        }
+        # Keep the resolved replay fields only while argv is unchanged from
+        # capture; once the user edits the command they'd be stale, so drop them
+        # and let boot fall back to the edited argv.
+        if orig_argv is not None and argv == orig_argv:
+            for k in ("launch", "app_id", "desktop_id"):
+                if w.get(k):
+                    entry[k] = w[k]
+        cleaned.append(entry)
     return cleaned

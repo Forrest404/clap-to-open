@@ -7,11 +7,12 @@ Captures every normal app window open right now — its launch command (from
 import json
 import os
 
-from . import paths, platforms
+from . import launchspec, paths, platforms
 
 
 def capture():
     """Return the list of layout entries for the currently open normal windows."""
+    ports = paths.control_panel_ports()
     entries = []
     for w in platforms.win_list():
         if w.get("window_type") != 0:          # keep only NORMAL windows
@@ -20,8 +21,13 @@ def capture():
         if not argv:
             print(f"  skip {w.get('wm_class')}: no readable cmdline")
             continue
+        # Never capture Clap to Open's own control panel — it would relaunch
+        # itself on every boot.
+        if launchspec.is_control_panel(argv, ports):
+            print(f"  skip {w.get('wm_class')}: Clap to Open control panel")
+            continue
         d = platforms.window_details(w["id"]) or {}
-        entries.append({
+        entry = {
             "wm_class": w.get("wm_class"),
             "title": w.get("title"),
             "argv": argv,
@@ -31,7 +37,11 @@ def capture():
             "height": d.get("height"),
             "monitor": d.get("monitor"),
             "maximized": bool(d.get("maximized")),
-        })
+        }
+        # Record a host-valid replay command (flatpak run / .desktop Exec) when
+        # the raw cmdline isn't one. Additive: absent fields mean "use argv".
+        entry.update(launchspec.resolve_capture(w, argv))
+        entries.append(entry)
     return entries
 
 
