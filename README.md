@@ -140,6 +140,11 @@ Doing it by hand instead:
 - 👏 **Double or triple clap** to trigger, with an adjustable cooldown.
 - 🎚️ **Sensitivity controls** — threshold, volume gate, band-pass, reset time.
 - 🪟 **Workspace layouts** — capture the current windows, test the boot, clear.
+- 📦 **Reliable relaunch** — handles Flatpak apps (`flatpak run`) and
+  single-instance apps (Ptyxis, Cursor/VS Code, browsers) that used to silently
+  re-focus instead of opening a second window.
+- 🖥️ **Run a command in a terminal** — give any captured terminal a command
+  (e.g. `claude`) to run on boot, with the right syntax per terminal.
 - 🎵 **Startup sound** — a bundled chime (offline), any web URL, or off.
 - ⚙️ **Pre-launch command** — optionally start a service your apps depend on.
 - ♻️ **Reset to defaults** in one click.
@@ -210,8 +215,10 @@ immediately. `layout.json` stores captured window geometry/launch commands.
   enabled (`gnome-extensions list | grep window-calls`).
 - **No sound** — install `pipewire-utils`/`pulseaudio-utils` (`paplay`) or
   `ffmpeg` (`ffplay`), or set the sound mode to *Off*.
-- **A captured app won’t relaunch** — some Flatpak/sandboxed apps record a
-  command that can’t be replayed verbatim; launch those manually.
+- **A captured app won’t relaunch** — Flatpak and single-instance apps are
+  resolved automatically now, but a few apps still record a command that can’t be
+  replayed verbatim. Run `clap boot` from a terminal to see what failed, and
+  [open an issue](https://github.com/Forrest404/clap-to-open/issues) with the app.
 
 ## Uninstall
 
