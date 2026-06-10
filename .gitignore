@@ -1,0 +1,13 @@
+# Runtime / machine-specific state — kept out of git
+venv/
+config.json
+layout.json
+data/brave-sound/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.eggs/
+build/
+dist/

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clap to Open</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">👏</span>
+        <div>
+          <h1>Clap to Open</h1>
+          <p class="tagline">Double-clap to launch your workspace</p>
+        </div>
+      </div>
+      <div class="status-pill" id="statusPill" data-on="false">
+        <span class="dot"></span><span id="statusText">…</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- Status -->
+      <section class="card hero">
+        <div class="hero-row">
+          <div>
+            <h2>Listening</h2>
+            <p class="muted" id="listenHint">Turn the mic listener on to react to claps.</p>
+          </div>
+          <label class="switch big">
+            <input type="checkbox" id="listenToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="hero-row sub">
+          <div>
+            <h3>Start on login</h3>
+            <p class="muted">Begin listening automatically when you log in.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="autostartToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="hero-row sub">
+          <div>
+            <h3>Toggle shortcut</h3>
+            <p class="muted" id="hotkeyHint">Set a global hotkey to turn listening on/off.</p>
+          </div>
+          <div class="hotkey-set">
+            <button class="btn ghost" id="hotkeyBtn">Set shortcut</button>
+            <button class="btn danger ghost" id="hotkeyClear" hidden>Clear</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trigger -->
+      <section class="card">
+        <h2>Trigger</h2>
+        <div class="field">
+          <label>Claps to trigger</label>
+          <div class="segmented" id="clapCount" role="radiogroup">
+            <button data-val="2" class="seg">Double</button>
+            <button data-val="3" class="seg">Triple</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Cooldown <span class="val" id="cooldownVal"></span></label>
+          <input type="range" id="cooldown" min="0" max="15" step="1">
+          <p class="muted">Seconds to wait after a trigger before listening again.</p>
+        </div>
+      </section>
+
+      <!-- Sensitivity -->
+      <section class="card">
+        <h2>Sensitivity</h2>
+        <p class="muted">Higher threshold = stricter (fewer false triggers).</p>
+        <div class="field">
+          <label>Threshold bias <span class="val" id="thresholdVal"></span></label>
+          <input type="range" id="threshold_bias" min="500" max="6000" step="100">
+        </div>
+        <div class="field">
+          <label>Initial volume threshold <span class="val" id="initVolVal"></span></label>
+          <input type="range" id="initial_volume_threshold" min="500" max="6000" step="100">
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <label>Low cut (Hz) <span class="val" id="lowcutVal"></span></label>
+            <input type="range" id="lowcut" min="50" max="1000" step="10">
+          </div>
+          <div class="field">
+            <label>High cut (Hz) <span class="val" id="highcutVal"></span></label>
+            <input type="range" id="highcut" min="1000" max="6000" step="50">
+          </div>
+        </div>
+        <div class="field">
+          <label>Reset time <span class="val" id="resetVal"></span></label>
+          <input type="range" id="reset_time" min="0.2" max="1.5" step="0.05">
+          <p class="muted">Max gap between the two claps of a double (seconds).</p>
+        </div>
+      </section>
+
+      <!-- Sound -->
+      <section class="card">
+        <h2>Startup sound</h2>
+        <div class="field">
+          <div class="segmented" id="soundMode" role="radiogroup">
+            <button data-val="file" class="seg">Sound file</button>
+            <button data-val="url" class="seg">Web URL</button>
+            <button data-val="off" class="seg">Off</button>
+          </div>
+        </div>
+        <div class="field" data-sound="file">
+          <label>File (relative to project or absolute)</label>
+          <input type="text" id="soundFile" placeholder="data/sounds/boot.ogg">
+        </div>
+        <div class="field" data-sound="url">
+          <label>URL</label>
+          <input type="text" id="soundUrl" placeholder="https://…">
+        </div>
+        <button class="btn ghost" id="testSound">▶ Test sound</button>
+      </section>
+
+      <!-- Workspace -->
+      <section class="card">
+        <h2>Workspace layout</h2>
+        <p class="muted" id="layoutSummary">No layout captured.</p>
+        <ul class="winlist" id="winList"></ul>
+        <div class="btnrow">
+          <button class="btn" id="captureBtn">⛶ Capture current layout</button>
+          <button class="btn ghost" id="testBoot">▶ Test boot</button>
+          <button class="btn danger ghost" id="clearBtn">Clear</button>
+        </div>
+        <p class="muted small">Capture saves every open window's position so a clap restores them.</p>
+      </section>
+
+      <!-- Advanced -->
+      <section class="card">
+        <h2>Advanced</h2>
+        <div class="field">
+          <label>Pre-launch command</label>
+          <input type="text" id="preLaunch" placeholder="e.g. docker compose -f ~/stack/compose.yml up -d">
+          <p class="muted">Optional shell command run once before windows open — handy
+            to start a service an app depends on. Leave blank to skip.</p>
+        </div>
+        <div class="field reset-row">
+          <div>
+            <label>Reset settings</label>
+            <p class="muted">Restore sensitivity, trigger, sound and pre-launch to defaults.
+              Your saved layout and shortcut are kept.</p>
+          </div>
+          <button class="btn danger ghost" id="resetBtn">Reset to defaults</button>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast"></div>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

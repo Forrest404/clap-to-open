@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clap-to-open"
+version = "1.0.0"
+description = "Double-clap to launch your saved workspace layout, with a web control panel."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "clap-detector",
+    "flask>=3.0",
+]
+
+[project.scripts]
+clap = "clap_to_open.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+clap_to_open = ["web/templates/*.html", "web/static/*"]

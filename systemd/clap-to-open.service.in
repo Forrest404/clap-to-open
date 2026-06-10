@@ -1,0 +1,13 @@
+[Unit]
+Description=Clap to Open — clap listener
+After=graphical-session.target pipewire.service
+PartOf=graphical-session.target
+
+[Service]
+WorkingDirectory=@PROJECT@
+ExecStart=@PROJECT@/venv/bin/python -m clap_to_open.listener
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

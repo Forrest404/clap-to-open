@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Clap to Open
+Comment=Configure double-clap workspace launcher
+Exec=@PROJECT@/venv/bin/clap serve
+Icon=audio-input-microphone
+Terminal=false
+Categories=Utility;Settings;
